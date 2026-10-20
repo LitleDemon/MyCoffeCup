@@ -2,8 +2,8 @@
  * admin.js — общий скрипт для всех страниц админки.
  * Определяет страницу по URL и инициализирует нужный раздел.
  *
- * Заказы, товары, статьи — через API. Fallback на localStorage
- * только при сетевой ошибке (isNetworkError).
+ * Заказы, товары, статьи — через API. Без моков:
+ * если в БД пусто — таблица пуста.
  *
  * Графики: Chart.js подключается локально из /js/vendor/chart.umd.min.js.
  * Анимация отключена — иначе при «плавающем» размере canvas
@@ -53,9 +53,6 @@
       return fallback;
     }
   }
-  function writeMock(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
-  }
 
   /* Модалки */
   function bindModal(modalSelector) {
@@ -63,7 +60,7 @@
     if (!modal) return { open: () => {}, close: () => {}, setTitle: () => {} };
 
     const titleEl = modal.querySelector('[data-modal-title]');
-    const openBtns = document.querySelectorAll('[data-open-product-modal], [data-open-post-modal]');
+    const openBtns = document.querySelectorAll('[data-open-product-modal], [data-open-post-modal], [data-open-topping-modal]');
 
     function open() {
       modal.hidden = false;
@@ -78,13 +75,11 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
 
     openBtns.forEach((btn) => {
-      const target = btn.getAttribute('data-open-product-modal') !== null
-        ? '[data-product-modal]'
-        : btn.getAttribute('data-open-post-modal') !== null
-          ? '[data-post-modal]' : null;
-      if (target === modalSelector || modal.matches(modalSelector)) {
-        btn.addEventListener('click', open);
-      }
+      const target = btn.hasAttribute('data-open-product-modal') ? '[data-product-modal]'
+        : btn.hasAttribute('data-open-post-modal') ? '[data-post-modal]'
+        : btn.hasAttribute('data-open-topping-modal') ? '[data-topping-modal]'
+        : null;
+      if (target === modalSelector) btn.addEventListener('click', open);
     });
 
     return {
@@ -106,16 +101,10 @@
     document.querySelectorAll('[data-kpi-users]').forEach((el) => (el.textContent = kpis.newUsers));
 
     if (typeof Chart !== 'undefined') {
-      try {
-        renderSalesChart(Array.isArray(kpis.salesByDay) ? kpis.salesByDay : []);
-      } catch (err) {
-        console.error('Ошибка графика «Продажи по дням»:', err);
-      }
-      try {
-        renderTopProductsChart(Array.isArray(kpis.topProducts) ? kpis.topProducts : []);
-      } catch (err) {
-        console.error('Ошибка графика «Топ товаров»:', err);
-      }
+      try { renderSalesChart(Array.isArray(kpis.salesByDay) ? kpis.salesByDay : []); }
+      catch (err) { console.error('Ошибка графика «Продажи по дням»:', err); }
+      try { renderTopProductsChart(Array.isArray(kpis.topProducts) ? kpis.topProducts : []); }
+      catch (err) { console.error('Ошибка графика «Топ товаров»:', err); }
     } else {
       console.warn('Chart.js не загружен — графики не отрисованы');
       document.querySelectorAll('.chart-wrap').forEach((wrap) => {
@@ -158,12 +147,7 @@
         orders: 0,
         avgCheck: 0,
         newUsers: 0,
-        salesByDay: [
-          { day: 'Пн', value: 0 }, { day: 'Вт', value: 0 },
-          { day: 'Ср', value: 0 }, { day: 'Чт', value: 0 },
-          { day: 'Пт', value: 0 }, { day: 'Сб', value: 0 },
-          { day: 'Вс', value: 0 },
-        ],
+        salesByDay: ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((day) => ({ day, value: 0 })),
         topProducts: [],
       };
     }
@@ -174,9 +158,7 @@
       const data = await window.api.get('/orders');
       return Array.isArray(data) ? data : (data.orders || []);
     } catch (err) {
-      if (err.isNetworkError) {
-        return readMock('mock_orders', []);
-      }
+      if (err.isNetworkError) return readMock('mock_orders', []);
       return [];
     }
   }
@@ -184,12 +166,6 @@
   function renderSalesChart(salesByDay) {
     const canvas = document.getElementById('chart-sales');
     if (!canvas) return;
-
-    const w = canvas.offsetWidth, h = canvas.offsetHeight;
-    console.log('[chart-sales] canvas', w, 'x', h, '| data:', salesByDay?.length, 'точек');
-    if (w === 0 || h === 0) {
-      console.warn('[chart-sales] canvas имеет нулевой размер — проверь .chart-wrap в HTML');
-    }
 
     if (!Array.isArray(salesByDay) || !salesByDay.length) {
       salesByDay = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((day) => ({ day, value: 0 }));
@@ -223,15 +199,8 @@
           },
         },
         scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color: CHART_COLORS.grid },
-            ticks: { color: CHART_COLORS.text },
-          },
-          x: {
-            grid: { display: false },
-            ticks: { color: CHART_COLORS.text },
-          },
+          y: { beginAtZero: true, grid: { color: CHART_COLORS.grid }, ticks: { color: CHART_COLORS.text } },
+          x: { grid: { display: false }, ticks: { color: CHART_COLORS.text } },
         },
       },
     });
@@ -241,15 +210,7 @@
     const canvas = document.getElementById('chart-top-products');
     if (!canvas) return;
 
-    const w = canvas.offsetWidth, h = canvas.offsetHeight;
-    console.log('[chart-top] canvas', w, 'x', h, '| data:', top?.length, 'точек');
-    if (w === 0 || h === 0) {
-      console.warn('[chart-top] canvas имеет нулевой размер — проверь .chart-wrap в HTML');
-    }
-
-    if (!Array.isArray(top) || !top.length) {
-      top = [{ name: 'Нет данных', value: 0 }];
-    }
+    if (!Array.isArray(top) || !top.length) top = [{ name: 'Нет данных', value: 0 }];
 
     new Chart(canvas, {
       type: 'bar',
@@ -280,15 +241,8 @@
           },
         },
         scales: {
-          x: {
-            beginAtZero: true,
-            grid: { color: CHART_COLORS.grid },
-            ticks: { color: CHART_COLORS.text },
-          },
-          y: {
-            grid: { display: false },
-            ticks: { color: CHART_COLORS.text },
-          },
+          x: { beginAtZero: true, grid: { color: CHART_COLORS.grid }, ticks: { color: CHART_COLORS.text } },
+          y: { grid: { display: false }, ticks: { color: CHART_COLORS.text } },
         },
       },
     });
@@ -298,6 +252,8 @@
      PRODUCTS
      ============================================================ */
 
+  const SIZE_CODES = ['S', 'M', 'L'];
+
   async function initProducts() {
     const tbody = document.querySelector('[data-products-table]');
     const modal = bindModal('[data-product-modal]');
@@ -306,69 +262,162 @@
 
     let products = await loadProductsAdmin();
 
+    /* Переключение полей по категории */
+    const categorySelect = form.querySelector('[name="category"]');
+    const priceField = form.querySelector('[data-price-field]');
+    const sizesField = form.querySelector('[data-sizes-field]');
+    const priceInput = form.querySelector('[name="price"]');
+
+    function toggleFieldsByCategory() {
+      if (!categorySelect) return;
+      const isDrink = categorySelect.value === 'coffee' || categorySelect.value === 'tea';
+      if (priceField) priceField.hidden = isDrink;
+      if (sizesField) sizesField.hidden = !isDrink;
+      if (priceInput) priceInput.required = !isDrink;
+    }
+    categorySelect?.addEventListener('change', toggleFieldsByCategory);
+
+    /* Размеры: чекбокс включает/выключает цену */
+    SIZE_CODES.forEach((code) => {
+      const check = form.querySelector(`[data-size-check="${code}"]`);
+      const input = form.querySelector(`[data-size-price="${code}"]`);
+      if (!check || !input) return;
+      check.addEventListener('change', () => {
+        input.disabled = !check.checked;
+        if (!check.checked) input.value = '';
+      });
+    });
+
+    /* Drag&drop изображения */
+    setupImageDropzone(form);
+
+    /* Рендер таблицы */
     function render() {
       if (!products.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Товаров пока нет</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Товаров пока нет</td></tr>';
         return;
       }
-      tbody.innerHTML = products.map((p) => `
-        <tr>
-          <td>${p.id}</td>
-          <td>${escapeHtml(p.name)}</td>
-          <td>${escapeHtml(p.category)}</td>
-          <td>${fmtPrice(p.price)}</td>
-          <td>${p.stock}</td>
-          <td class="table-actions">
-            <button class="btn" data-edit="${p.id}" title="Редактировать">✎</button>
-            <button class="btn" data-delete="${p.id}" title="Удалить">🗑</button>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = products.map((p) => {
+        const sizes = Array.isArray(p.sizes) && p.sizes.length
+          ? p.sizes.map((s) => `${s.code} ${fmtPrice(s.price)}`).join(' · ')
+          : '—';
+        return `
+          <tr>
+            <td>${p.id}</td>
+            <td>${p.image_url ? `<img src="${p.image_url}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;">` : '—'}</td>
+            <td>${escapeHtml(p.name)}</td>
+            <td>${escapeHtml(p.category)}</td>
+            <td>${fmtPrice(p.price)}</td>
+            <td style="font-size: var(--fs-xs);">${sizes}</td>
+            <td>${p.is_seasonal ? '<span class="badge badge--accent">сезон</span>' : '—'}</td>
+            <td class="table-actions">
+              <button class="btn" data-edit="${p.id}" title="Редактировать">✎</button>
+              <button class="btn" data-delete="${p.id}" title="Удалить">🗑</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function openForCreate() {
       form.reset();
       form.querySelector('[name="id"]').value = '';
+      form.querySelector('[name="image_url"]').value = '';
+      resetDropzonePreview(form);
+      SIZE_CODES.forEach((code) => {
+        const check = form.querySelector(`[data-size-check="${code}"]`);
+        const inp = form.querySelector(`[data-size-price="${code}"]`);
+        if (check) check.checked = false;
+        if (inp) { inp.disabled = true; inp.value = ''; }
+      });
+      toggleFieldsByCategory();
       modal.setTitle('Новый товар');
       modal.open();
     }
+
     function openForEdit(p) {
       form.reset();
       form.querySelector('[name="id"]').value = p.id;
       form.querySelector('[name="name"]').value = p.name || '';
       form.querySelector('[name="category"]').value = p.category || 'coffee';
-      form.querySelector('[name="price"]').value = p.price;
-      form.querySelector('[name="stock"]').value = p.stock;
-      form.querySelector('[name="image_url"]').value = p.image_url || '';
       form.querySelector('[name="description"]').value = p.description || '';
+      form.querySelector('[name="price"]').value = p.price || '';
+      form.querySelector('[name="image_url"]').value = p.image_url || '';
+      form.querySelector('[name="is_seasonal"]').checked = Boolean(p.is_seasonal);
+
+      SIZE_CODES.forEach((code) => {
+        const check = form.querySelector(`[data-size-check="${code}"]`);
+        const inp = form.querySelector(`[data-size-price="${code}"]`);
+        if (!check || !inp) return;
+        const found = Array.isArray(p.sizes) ? p.sizes.find((s) => s.code === code) : null;
+        check.checked = Boolean(found);
+        inp.disabled = !found;
+        inp.value = found ? found.price : '';
+      });
+
+      setDropzonePreview(form, p.image_url);
+      toggleFieldsByCategory();
       modal.setTitle('Редактировать товар');
       modal.open();
     }
 
+    function collectPayload() {
+      const fd = new FormData(form);
+      const category = fd.get('category');
+      const isDrink = category === 'coffee' || category === 'tea';
+
+      const payload = {
+        name: fd.get('name').trim(),
+        category,
+        description: fd.get('description').trim(),
+        image_url: fd.get('image_url') || null,
+        is_seasonal: fd.get('is_seasonal') === 'on',
+      };
+
+      if (isDrink) {
+        const sizes = [];
+        SIZE_CODES.forEach((code) => {
+          const check = form.querySelector(`[data-size-check="${code}"]`);
+          const price = form.querySelector(`[data-size-price="${code}"]`)?.value;
+          if (check?.checked && price !== '') {
+            sizes.push({ code, price: Number(price) });
+          }
+        });
+        if (!sizes.length) throw new Error('Отметьте хотя бы один размер и укажите цену');
+        payload.sizes = sizes;
+        payload.price = Math.min(...sizes.map((s) => s.price));
+      } else {
+        payload.sizes = null;
+        payload.price = Number(fd.get('price'));
+        if (isNaN(payload.price) || payload.price < 0) throw new Error('Укажите корректную цену');
+      }
+      return payload;
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fd = new FormData(form);
-      const id = fd.get('id');
-      const data = {
-        name: fd.get('name').trim(),
-        category: fd.get('category'),
-        price: Number(fd.get('price')),
-        stock: Number(fd.get('stock')),
-        image_url: fd.get('image_url').trim() || 'https://picsum.photos/seed/' + Date.now() + '/600/450',
-        description: fd.get('description').trim(),
-      };
+      const errorEl = form.querySelector('[data-error]');
+      errorEl.hidden = true;
+
+      let payload;
+      try {
+        payload = collectPayload();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.hidden = false;
+        return;
+      }
+
+      const id = form.querySelector('[name="id"]').value;
 
       try {
         let saved;
-        if (id) {
-          saved = await window.api.put(`/products/${id}`, data);
-        } else {
-          saved = await window.api.post('/products', data);
-        }
+        if (id) saved = await window.api.put(`/products/${id}`, payload);
+        else saved = await window.api.post('/products', payload);
 
         if (id) {
           const idx = products.findIndex((p) => String(p.id) === String(id));
-          if (idx !== -1) products[idx] = { ...products[idx], ...saved };
+          if (idx !== -1) products[idx] = saved;
         } else {
           products.push(saved);
         }
@@ -377,19 +426,10 @@
         window.showToast?.('Товар сохранён');
       } catch (err) {
         if (err.isNetworkError) {
-          if (id) {
-            const idx = products.findIndex((p) => String(p.id) === String(id));
-            if (idx !== -1) products[idx] = { ...products[idx], ...data };
-          } else {
-            data.id = Date.now();
-            products.push(data);
-          }
-          writeMock('mock_products', products);
-          render();
-          modal.close();
-          window.showToast?.('Товар сохранён (локально)');
+          window.showToast?.('Нет связи с сервером');
         } else {
-          window.showToast?.(err.message || 'Не удалось сохранить товар');
+          errorEl.textContent = err.message || 'Не удалось сохранить товар';
+          errorEl.hidden = false;
         }
       }
     });
@@ -410,11 +450,10 @@
           render();
           window.showToast?.('Товар удалён');
         } catch (err) {
-          if (err.isNetworkError) {
+          if (err.status === 404) {
             products = products.filter((p) => String(p.id) !== String(id));
-            writeMock('mock_products', products);
             render();
-            window.showToast?.('Товар удалён (локально)');
+            window.showToast?.('Товар уже отсутствовал в БД — убран из списка');
           } else {
             window.showToast?.(err.message || 'Не удалось удалить товар');
           }
@@ -429,14 +468,114 @@
   async function loadProductsAdmin() {
     try {
       const data = await window.api.get('/products');
-      const list = Array.isArray(data) ? data : (data.products || []);
-      if (list.length) return list;
-    } catch { /* fallthrough */ }
-    return readMock('mock_products', [
-      { id: 1, name: 'Эспрессо', category: 'coffee', price: 150, stock: 100, description: '', image_url: 'https://picsum.photos/seed/espresso/600/450' },
-      { id: 3, name: 'Латте',    category: 'coffee', price: 280, stock: 80,  description: '', image_url: 'https://picsum.photos/seed/latte/600/450' },
-      { id: 7, name: 'Круассан', category: 'dessert', price: 180, stock: 30, description: '', image_url: 'https://picsum.photos/seed/croissant/600/450' },
-    ]);
+      return Array.isArray(data) ? data : (data.products || []);
+    } catch (err) {
+      console.warn('Не удалось загрузить товары:', err.message);
+      return [];
+    }
+  }
+
+  /* --- Drag&drop загрузки изображения --- */
+
+  function setupImageDropzone(form) {
+    const dropzone = form.querySelector('[data-dropzone]');
+    const input = form.querySelector('[data-image-input]');
+    if (!dropzone || !input) return;
+
+    dropzone.addEventListener('click', (e) => {
+      if (e.target.closest('[data-clear-image]')) return;
+      input.click();
+    });
+
+    input.addEventListener('change', () => {
+      if (input.files && input.files[0]) uploadFile(input.files[0]);
+    });
+
+    ['dragenter', 'dragover'].forEach((evt) => {
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dropzone--over');
+      });
+    });
+    ['dragleave', 'drop'].forEach((evt) => {
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dropzone--over');
+      });
+    });
+    dropzone.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files?.[0];
+      if (file) uploadFile(file);
+    });
+
+    async function uploadFile(file) {
+      if (!/^image\//.test(file.type)) {
+        window.showToast?.('Только изображения');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        window.showToast?.('Файл больше 5 МБ');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('image', file);
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${window.api.getToken()}` },
+          body: fd,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.message || `Ошибка ${res.status}`);
+        }
+        const data = await res.json();
+        form.querySelector('[name="image_url"]').value = data.url;
+        setDropzonePreview(form, data.url);
+        window.showToast?.('Изображение загружено');
+      } catch (err) {
+        resetDropzonePreview(form);
+        window.showToast?.(err.message || 'Не удалось загрузить файл');
+      }
+    }
+  }
+
+  function setDropzonePreview(form, url) {
+    const preview = form.querySelector('[data-image-preview]');
+    const hint = form.querySelector('[data-image-hint]');
+    if (!preview || !hint) return;
+
+    if (url) {
+      preview.innerHTML = `
+        <img src="${url}" alt="preview">
+        <button type="button" class="dropzone__clear" data-clear-image title="Удалить">✕</button>
+      `;
+      preview.hidden = false;
+      hint.hidden = true;
+      preview.querySelector('[data-clear-image]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        form.querySelector('[name="image_url"]').value = '';
+        resetDropzonePreview(form);
+      });
+    } else {
+      resetDropzonePreview(form);
+    }
+  }
+
+  function resetDropzonePreview(form) {
+    const preview = form.querySelector('[data-image-preview]');
+    const hint = form.querySelector('[data-image-hint]');
+    if (preview) { preview.innerHTML = ''; preview.hidden = true; }
+    if (hint) {
+      hint.hidden = false;
+      hint.innerHTML = `
+        <span class="dropzone__icon">🖼</span>
+        <span>Перетащите изображение сюда или <u>выберите файл</u></span>
+        <small class="text-muted">JPEG, PNG, WebP, GIF — до 5 МБ</small>
+      `;
+    }
   }
 
   /* ============================================================
@@ -491,7 +630,6 @@
       e.preventDefault();
       const fd = new FormData(form);
       const id = fd.get('id');
-      const user = window.api.getUser();
       const data = {
         title: fd.get('title').trim(),
         excerpt: fd.get('excerpt').trim(),
@@ -501,15 +639,12 @@
 
       try {
         let saved;
-        if (id) {
-          saved = await window.api.put(`/posts/${id}`, data);
-        } else {
-          saved = await window.api.post('/posts', data);
-        }
+        if (id) saved = await window.api.put(`/posts/${id}`, data);
+        else saved = await window.api.post('/posts', data);
 
         if (id) {
           const idx = posts.findIndex((p) => String(p.id) === String(id));
-          if (idx !== -1) posts[idx] = { ...posts[idx], ...saved };
+          if (idx !== -1) posts[idx] = saved;
         } else {
           posts.unshift(saved);
         }
@@ -518,19 +653,7 @@
         window.showToast?.('Статья сохранена');
       } catch (err) {
         if (err.isNetworkError) {
-          if (id) {
-            const idx = posts.findIndex((p) => String(p.id) === String(id));
-            if (idx !== -1) posts[idx] = { ...posts[idx], ...data };
-          } else {
-            data.id = Date.now();
-            data.author = user?.name || 'Администратор';
-            data.created_at = new Date().toISOString();
-            posts.unshift(data);
-          }
-          writeMock('mock_posts', posts);
-          render();
-          modal.close();
-          window.showToast?.('Статья сохранена (локально)');
+          window.showToast?.('Нет связи с сервером');
         } else {
           window.showToast?.(err.message || 'Не удалось сохранить статью');
         }
@@ -553,11 +676,10 @@
           render();
           window.showToast?.('Статья удалена');
         } catch (err) {
-          if (err.isNetworkError) {
+          if (err.status === 404) {
             posts = posts.filter((p) => String(p.id) !== String(id));
-            writeMock('mock_posts', posts);
             render();
-            window.showToast?.('Статья удалена (локально)');
+            window.showToast?.('Статья уже отсутствовала в БД — убрана из списка');
           } else {
             window.showToast?.(err.message || 'Не удалось удалить статью');
           }
@@ -593,17 +715,13 @@
 
     async function fetchOrders() {
       try {
-        const url = statusFilter
-          ? `/orders?status=${encodeURIComponent(statusFilter)}`
-          : '/orders';
+        const url = statusFilter ? `/orders?status=${encodeURIComponent(statusFilter)}` : '/orders';
         const data = await window.api.get(url);
         orders = Array.isArray(data) ? data : (data.orders || []);
       } catch (err) {
         if (err.isNetworkError) {
           orders = readMock('mock_orders', []);
-          orders = statusFilter
-            ? orders.filter((o) => o.status === statusFilter)
-            : orders;
+          orders = statusFilter ? orders.filter((o) => o.status === statusFilter) : orders;
         } else {
           window.showToast?.(err.message || 'Не удалось загрузить заказы');
           orders = [];
@@ -660,18 +778,8 @@
         if (order) order.status = newStatus;
         window.showToast?.(`Статус заказа #${id} — ${STATUS_LABEL[newStatus]}`);
       } catch (err) {
-        if (err.isNetworkError) {
-          const list = readMock('mock_orders', []);
-          const order = list.find((o) => String(o.id) === String(id));
-          if (order) {
-            order.status = newStatus;
-            writeMock('mock_orders', list);
-          }
-          window.showToast?.(`Статус заказа #${id} — ${STATUS_LABEL[newStatus]} (локально)`);
-        } else {
-          window.showToast?.(err.message || 'Не удалось изменить статус');
-          await reload();
-        }
+        window.showToast?.(err.message || 'Не удалось изменить статус');
+        await reload();
       }
     });
 

@@ -1300,3 +1300,103 @@ p { margin: 0 0 var(--sp-3); }
   .admin-kpis { grid-template-columns: 1fr; }
   .logo { font-size: var(--fs-lg); }
 }
+
+/* ---------- 25. Dropzone (загрузка изображений) ---------- */
+.dropzone {
+  position: relative;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card-body);
+  padding: var(--sp-4);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  text-align: center;
+}
+.dropzone:hover,
+.dropzone--over {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.dropzone__hint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  align-items: center;
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+}
+.dropzone__hint u { color: var(--color-primary); text-decoration: underline; cursor: pointer; }
+.dropzone__icon { font-size: 2rem; line-height: 1; }
+.dropzone__preview {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+}
+.dropzone__preview img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.dropzone__clear {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(28, 43, 34, 0.7);
+  color: #fff;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.dropzone__clear:hover { background: var(--color-error); }
+
+/* ---------- 26. Редактор размеров ---------- */
+.sizes-editor {
+  display: grid;
+  gap: var(--sp-2);
+}
+.size-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--color-card-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.size-row:hover { border-color: var(--color-highlight); }
+.size-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+.size-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.size-row input[type="number"] {
+  padding: 8px 12px;
+}
