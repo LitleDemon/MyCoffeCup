@@ -11,15 +11,18 @@
 </head>
 <body>
 
+  <!-- ========== ШАПКА ========== -->
   <header class="site-header">
     <div class="container site-header__inner">
       <a href="/index.html" class="logo">My<span>Coffe</span>Cup</a>
+
       <nav class="nav" aria-label="Основная навигация">
         <a href="/index.html">Каталог</a>
         <a href="/blog.html">Блог</a>
         <a href="/#about">О нас</a>
         <a href="/#contacts">Контакты</a>
       </nav>
+
       <div class="header-actions">
         <a href="/cart.html" class="btn btn--ghost" aria-label="Корзина">
           🛒 <span class="cart-count badge badge--new" data-cart-count>0</span>
@@ -30,16 +33,16 @@
     </div>
   </header>
 
+  <!-- ========== КОРЗИНА ========== -->
   <main class="section">
     <div class="container">
       <h1>Корзина</h1>
 
-      <div class="cart-layout" style="display: grid; grid-template-columns: 1fr 340px; gap: var(--sp-5); align-items: start;">
+      <div class="cart-layout">
 
-        <!-- Список товаров -->
+        <!-- Левая колонка: товары + стикеры -->
         <div>
           <div data-cart-items>
-            <!-- Корзина рендерится cart.js -->
             <p class="text-muted">Загрузка…</p>
           </div>
 
@@ -47,10 +50,47 @@
             <p class="text-muted">Ваша корзина пока пуста.</p>
             <a href="/index.html" class="btn btn--primary">Перейти в каталог</a>
           </div>
+
+          <!-- Стикеры и открытка -->
+          <details class="stickers-section">
+            <summary>🎨 Украсить открытку к заказу</summary>
+            <div class="stickers-editor">
+              <div class="stickers-canvas" data-stickers-canvas>
+                <span class="stickers-placeholder text-muted">Перетащите стикеры сюда 👇</span>
+              </div>
+
+              <div class="stickers-controls" data-stickers-controls hidden>
+                <label class="stickers-controls__row">
+                  <span>Размер</span>
+                  <input type="range" min="0.5" max="3" step="0.1" value="1" data-control-scale>
+                  <span class="stickers-controls__value" data-control-scale-value>1.0</span>
+                </label>
+                <label class="stickers-controls__row">
+                  <span>Поворот</span>
+                  <input type="range" min="0" max="360" step="1" value="0" data-control-rotate>
+                  <span class="stickers-controls__value" data-control-rotate-value>0°</span>
+                </label>
+                <button type="button" class="btn btn--danger btn--block" data-control-delete>
+                  Удалить элемент
+                </button>
+              </div>
+
+              <div class="stickers-palette" data-stickers-palette></div>
+
+              <div class="stickers-text-row">
+                <input type="text" class="input" placeholder="Текст на открытке" maxlength="60" data-stickers-text>
+                <button type="button" class="btn btn--secondary" data-stickers-add-text>Добавить</button>
+              </div>
+
+              <div class="row" style="justify-content: flex-end;">
+                <button type="button" class="btn btn--ghost" data-stickers-clear>Очистить</button>
+              </div>
+            </div>
+          </details>
         </div>
 
-        <!-- Итого + оформление -->
-        <aside class="cart-summary" style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--sp-4); position: sticky; top: 90px;">
+        <!-- Правая колонка: итоги -->
+        <aside class="cart-summary">
           <h3>Итого</h3>
           <div class="row row--between" style="padding: var(--sp-2) 0;">
             <span class="text-muted">Товаров</span>
@@ -60,9 +100,9 @@
             <strong>Сумма</strong>
             <strong class="price" data-cart-total-price>0 ₽</strong>
           </div>
-          <a href="/checkout.html" class="btn btn--primary btn--block" style="margin-top: var(--sp-3);">
+          <button type="button" class="btn btn--primary btn--block" style="margin-top: var(--sp-3);" data-checkout>
             Оформить заказ
-          </a>
+          </button>
           <a href="/index.html" class="btn btn--ghost btn--block" style="margin-top: var(--sp-2);">
             Продолжить покупки
           </a>
@@ -71,14 +111,16 @@
     </div>
   </main>
 
+  <!-- ========== ФУТЕР ========== -->
   <footer class="site-footer">
     <div class="container text-muted" style="padding: var(--sp-5) 0;">
       © <span data-current-year></span> MyCoffeCup
     </div>
   </footer>
 
-  <script src="/js/header.js"></script>
   <script src="/js/api.js"></script>
+  <script src="/js/header.js"></script>
   <script src="/js/cart.js"></script>
+  <script src="/js/stickers.js"></script>
 </body>
 </html>
