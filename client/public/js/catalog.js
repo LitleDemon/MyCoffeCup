@@ -4,32 +4,7 @@
  * Источник данных: API → localStorage.mock_products → MOCK_PRODUCTS.
  */
 
-const MOCK_PRODUCTS = [
-  { id: 1, name: 'Эспрессо',         category: 'coffee',  price: 150, stock: 100,
-    description: 'Классический крепкий эспрессо из смеси арабики и робусты.',
-    image_url: 'https://picsum.photos/seed/espresso/600/450' },
-  { id: 2, name: 'Американо',        category: 'coffee',  price: 180, stock: 100,
-    description: 'Эспрессо с горячей водой. Мягкий и бодрящий.',
-    image_url: 'https://picsum.photos/seed/americano/600/450' },
-  { id: 3, name: 'Латте',            category: 'coffee',  price: 280, stock: 80,
-    description: 'Эспрессо с подогретым молоком и нежной пенкой.',
-    image_url: 'https://picsum.photos/seed/latte/600/450' },
-  { id: 4, name: 'Капучино',         category: 'coffee',  price: 260, stock: 80,
-    description: 'Эспрессо и вспененное молоко в равных пропорциях.',
-    image_url: 'https://picsum.photos/seed/cappuccino/600/450' },
-  { id: 5, name: 'Матча-латте',      category: 'tea',     price: 320, stock: 50,
-    description: 'Японский зелёный чай матча с молоком.',
-    image_url: 'https://picsum.photos/seed/matcha/600/450' },
-  { id: 6, name: 'Облепиховый чай',  category: 'tea',     price: 240, stock: 50,
-    description: 'Согревающий чай с облепихой и мёдом.',
-    image_url: 'https://picsum.photos/seed/teaberry/600/450' },
-  { id: 7, name: 'Круассан',         category: 'dessert', price: 180, stock: 30,
-    description: 'Классический французский круассан со сливочным маслом.',
-    image_url: 'https://picsum.photos/seed/croissant/600/450' },
-  { id: 8, name: 'Чизкейк',          category: 'dessert', price: 320, stock: 20,
-    description: 'Нежный чизкейк на песочной основе с ягодным соусом.',
-    image_url: 'https://picsum.photos/seed/cheesecake/600/450' },
-];
+const MOCK_PRODUCTS = [];
 
 (function () {
   let allProducts = [];

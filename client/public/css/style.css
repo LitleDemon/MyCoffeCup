@@ -665,7 +665,6 @@ p { margin: 0 0 var(--sp-3); }
 }
 .admin-body::before { display: none; }
 
-/* Сайдбар: тёмный картон + кремовые плитки-кнопки */
 .admin-sidebar {
   background: var(--color-surface-2);
   border-right: 1px solid var(--color-border);
@@ -698,7 +697,6 @@ p { margin: 0 0 var(--sp-3); }
 
 .admin-nav { display: flex; flex-direction: column; gap: var(--sp-2); }
 
-/* Каждая ссылка — отдельная кремовая плитка */
 .admin-nav a {
   display: block;
   padding: var(--sp-2) var(--sp-3);
@@ -832,6 +830,7 @@ p { margin: 0 0 var(--sp-3); }
   padding: var(--sp-4);
   margin-bottom: var(--sp-4);
   box-shadow: var(--shadow-sm);
+  min-width: 0;
 }
 .panel:last-child { margin-bottom: 0; }
 
@@ -1111,7 +1110,6 @@ p { margin: 0 0 var(--sp-3); }
 }
 .stickers-text-row .input { width: 100%; }
 
-/* Кнопка «Добавить» в открытке — зелёная, как primary */
 .stickers-text-row [data-stickers-add-text] {
   background: var(--color-primary);
   color: #fff;
@@ -1177,7 +1175,19 @@ p { margin: 0 0 var(--sp-3); }
     0 6px 22px rgba(45, 106, 79, 0.5);
 }
 
-/* ---------- 23. Адаптивность ---------- */
+/* ---------- 23. Обёртка графика ---------- */
+.chart-wrap {
+  position: relative;
+  height: 280px;
+  width: 100%;
+}
+.chart-wrap canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* ---------- 24. Адаптивность ---------- */
 @media (max-width: 1000px) {
   .hero__inner { grid-template-columns: 1fr; }
   .hero__media { order: -1; }
@@ -1273,6 +1283,8 @@ p { margin: 0 0 var(--sp-3); }
   .section { padding: var(--sp-5) 0; }
 
   .stickers-text-row { grid-template-columns: 1fr; }
+
+  .chart-wrap { height: 240px; }
 }
 
 @media (max-width: 520px) {

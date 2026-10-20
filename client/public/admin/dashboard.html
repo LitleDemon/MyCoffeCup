@@ -52,11 +52,15 @@
     <section class="admin-panels">
       <div class="panel">
         <h3>Продажи по дням</h3>
-        <canvas id="chart-sales" height="260"></canvas>
+        <div class="chart-wrap">
+          <canvas id="chart-sales"></canvas>
+        </div>
       </div>
       <div class="panel">
         <h3>Топ товаров</h3>
-        <canvas id="chart-top-products" height="260"></canvas>
+        <div class="chart-wrap">
+          <canvas id="chart-top-products"></canvas>
+        </div>
       </div>
     </section>
 
@@ -82,7 +86,8 @@
     </section>
   </main>
 
-<script src="/js/api.js"></script>
-<script src="/js/admin.js"></script>
+  <script src="/js/vendor/chart.umd.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
 </body>
 </html>

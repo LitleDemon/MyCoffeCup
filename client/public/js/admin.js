@@ -2,12 +2,12 @@
  * admin.js — общий скрипт для всех страниц админки.
  * Определяет страницу по URL и инициализирует нужный раздел.
  *
- * Данные до появления бэкенда хранятся в localStorage:
- *   mock_products, mock_posts — используются также catalog.js и blog.js.
- *   mock_orders — только для админки (fallback при недоступности сервера).
+ * Заказы, товары, статьи — через API. Fallback на localStorage
+ * только при сетевой ошибке (isNetworkError).
  *
- * Цвета Chart.js подогнаны под картонную тему (Eco Cardboard):
- *   primary = #2D6A4F, accent = #B5651D, grid = #C9B896.
+ * Графики: Chart.js подключается локально из /js/vendor/chart.umd.min.js.
+ * Анимация отключена — иначе при «плавающем» размере canvas
+ * Chart.js может уйти в бесконечный цикл перерисовки.
  */
 
 (function () {
@@ -106,8 +106,21 @@
     document.querySelectorAll('[data-kpi-users]').forEach((el) => (el.textContent = kpis.newUsers));
 
     if (typeof Chart !== 'undefined') {
-      renderSalesChart(kpis.salesByDay);
-      renderTopProductsChart(kpis.topProducts);
+      try {
+        renderSalesChart(Array.isArray(kpis.salesByDay) ? kpis.salesByDay : []);
+      } catch (err) {
+        console.error('Ошибка графика «Продажи по дням»:', err);
+      }
+      try {
+        renderTopProductsChart(Array.isArray(kpis.topProducts) ? kpis.topProducts : []);
+      } catch (err) {
+        console.error('Ошибка графика «Топ товаров»:', err);
+      }
+    } else {
+      console.warn('Chart.js не загружен — графики не отрисованы');
+      document.querySelectorAll('.chart-wrap').forEach((wrap) => {
+        wrap.innerHTML = '<p class="text-muted" style="display:flex;align-items:center;justify-content:center;height:100%;margin:0;">Не удалось загрузить библиотеку графиков</p>';
+      });
     }
 
     const orders = await loadOrders();
@@ -134,8 +147,10 @@
     try {
       return await window.api.get('/admin/stats');
     } catch (err) {
-      if (!err.isNetworkError) {
-        // Не критично для дашборда — просто вернём нули
+      if (err.status === 401 || err.status === 403) {
+        window.showToast?.('Требуется вход администратора');
+        setTimeout(() => (location.href = '/login.html'), 700);
+      } else if (!err.isNetworkError) {
         console.warn('stats API:', err.message);
       }
       return {
@@ -169,6 +184,17 @@
   function renderSalesChart(salesByDay) {
     const canvas = document.getElementById('chart-sales');
     if (!canvas) return;
+
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+    console.log('[chart-sales] canvas', w, 'x', h, '| data:', salesByDay?.length, 'точек');
+    if (w === 0 || h === 0) {
+      console.warn('[chart-sales] canvas имеет нулевой размер — проверь .chart-wrap в HTML');
+    }
+
+    if (!Array.isArray(salesByDay) || !salesByDay.length) {
+      salesByDay = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((day) => ({ day, value: 0 }));
+    }
+
     new Chart(canvas, {
       type: 'bar',
       data: {
@@ -184,6 +210,8 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false,
+        resizeDelay: 200,
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -212,6 +240,17 @@
   function renderTopProductsChart(top) {
     const canvas = document.getElementById('chart-top-products');
     if (!canvas) return;
+
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+    console.log('[chart-top] canvas', w, 'x', h, '| data:', top?.length, 'точек');
+    if (w === 0 || h === 0) {
+      console.warn('[chart-top] canvas имеет нулевой размер — проверь .chart-wrap в HTML');
+    }
+
+    if (!Array.isArray(top) || !top.length) {
+      top = [{ name: 'Нет данных', value: 0 }];
+    }
+
     new Chart(canvas, {
       type: 'bar',
       data: {
@@ -228,6 +267,8 @@
         indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
+        animation: false,
+        resizeDelay: 200,
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -336,7 +377,6 @@
         window.showToast?.('Товар сохранён');
       } catch (err) {
         if (err.isNetworkError) {
-          // Fallback на localStorage
           if (id) {
             const idx = products.findIndex((p) => String(p.id) === String(id));
             if (idx !== -1) products[idx] = { ...products[idx], ...data };
@@ -532,15 +572,11 @@
   async function loadPostsAdmin() {
     try {
       const data = await window.api.get('/posts');
-      const list = Array.isArray(data) ? data : (data.posts || []);
-      if (list.length) return list;
-    } catch { /* fallthrough */ }
-    const local = readMock('mock_posts', null);
-    if (local) return local;
-    return [
-      { id: 1, title: 'Как выбрать зерно для дома', created_at: '2025-10-12', author: 'Степан', excerpt: '', cover_url: '', body: '' },
-      { id: 2, title: 'Почему латте-арт — это не главное', created_at: '2025-10-05', author: 'Степан', excerpt: '', cover_url: '', body: '' },
-    ];
+      return Array.isArray(data) ? data : (data.posts || []);
+    } catch (err) {
+      console.warn('Не удалось загрузить статьи:', err.message);
+      return [];
+    }
   }
 
   /* ============================================================
@@ -649,23 +685,23 @@
       const w = window.open('', '_blank');
       w.document.write(`
         <pre style="font-family: monospace; padding: 20px; font-size: 14px; background: #FBF7EE; color: #1C2B22;">
-    ╔═══════════════════════════════════════╗
-    ║              MyCoffeCup               ║
-    ║  Новосибирск, Ул. Красный Проспект 38 ║
-    ╚═══════════════════════════════════════╝
+    ╔══════════════════════════════════════════╗
+    ║              MyCoffeCup                  ║
+    ║  Новосибирск, Ул. Красный Проспект 38    ║
+    ╚══════════════════════════════════════════╝
 
     Заказ #${order.id}
     Дата:  ${new Date(order.created_at).toLocaleString('ru-RU')}
     Клиент: ${order.customer_name || '—'}
-    ────────────────────────────────────
+    ────────────────────────────────────────────
     ${items.map((it) =>
       `${it.name || 'Товар'} × ${it.qty} = ${fmtPrice((Number(it.price) || 0) * it.qty)}`
     ).join('\n    ')}
-    ────────────────────────────────────
+    ────────────────────────────────────────────
     ИТОГО: ${fmtPrice(order.total)}
     Статус: ${STATUS_LABEL[order.status] || order.status}
-    ────────────────────────────────────
-        Спасибо за заказ!
+    ────────────────────────────────────────────
+              Спасибо за заказ!
         </pre>
       `);
     });
