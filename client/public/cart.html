@@ -11,18 +11,15 @@
 </head>
 <body>
 
-  <!-- ========== ШАПКА ========== -->
   <header class="site-header">
     <div class="container site-header__inner">
       <a href="/index.html" class="logo">My<span>Coffe</span>Cup</a>
-
       <nav class="nav" aria-label="Основная навигация">
         <a href="/index.html">Каталог</a>
         <a href="/blog.html">Блог</a>
         <a href="/#about">О нас</a>
         <a href="/#contacts">Контакты</a>
       </nav>
-
       <div class="header-actions">
         <a href="/cart.html" class="btn btn--ghost" aria-label="Корзина">
           🛒 <span class="cart-count badge badge--new" data-cart-count>0</span>
@@ -33,25 +30,19 @@
     </div>
   </header>
 
-  <!-- ========== КОРЗИНА ========== -->
   <main class="section">
     <div class="container">
       <h1>Корзина</h1>
 
       <div class="cart-layout">
-
-        <!-- Левая колонка: товары + стикеры -->
         <div>
-          <div data-cart-items>
-            <p class="text-muted">Загрузка…</p>
-          </div>
+          <div data-cart-items></div>
 
           <div class="text-center" data-cart-empty hidden>
             <p class="text-muted">Ваша корзина пока пуста.</p>
             <a href="/index.html" class="btn btn--primary">Перейти в каталог</a>
           </div>
 
-          <!-- Стикеры и открытка -->
           <details class="stickers-section">
             <summary>🎨 Украсить открытку к заказу</summary>
             <div class="stickers-editor">
@@ -89,7 +80,6 @@
           </details>
         </div>
 
-        <!-- Правая колонка: итоги -->
         <aside class="cart-summary">
           <h3>Итого</h3>
           <div class="row row--between" style="padding: var(--sp-2) 0;">
@@ -111,7 +101,32 @@
     </div>
   </main>
 
-  <!-- ========== ФУТЕР ========== -->
+  <!-- Модалка редактирования позиции -->
+  <div class="modal" data-edit-modal hidden>
+    <div class="modal__overlay" data-close-edit-modal></div>
+    <div class="modal__content" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+      <header class="modal__header">
+        <h3 id="edit-modal-title" data-edit-modal-title>Изменить позицию</h3>
+        <button class="btn btn--ghost" data-close-edit-modal aria-label="Закрыть">✕</button>
+      </header>
+
+      <form data-edit-form>
+        <div class="field" data-edit-sizes-field></div>
+        <div class="field" data-edit-toppings-field></div>
+
+        <div class="product-detail__total">
+          <span class="text-muted">Цена за 1 шт:</span>
+          <strong class="price" data-edit-price>0 ₽</strong>
+        </div>
+
+        <div class="row" style="justify-content: flex-end; margin-top: var(--sp-3);">
+          <button type="button" class="btn btn--secondary" data-close-edit-modal>Отмена</button>
+          <button type="submit" class="btn btn--primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="container text-muted" style="padding: var(--sp-5) 0;">
       © <span data-current-year></span> MyCoffeCup

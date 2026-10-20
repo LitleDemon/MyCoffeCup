@@ -1,47 +1,43 @@
 /**
  * catalog.js — каталог и страница товара.
- * На карточках — контрол количества, если товар уже в корзине.
- * Источник данных: API → localStorage.mock_products → MOCK_PRODUCTS.
+ * Источник данных — только API (/api/products и /api/toppings).
+ *
+ * На карточках напитков — выбор размера S/M/L.
+ * На странице товара — размер + топпинги с пересчётом цены.
+ * Сезонные товары и топпинги помечаются бейджем.
  */
-
-const MOCK_PRODUCTS = [];
 
 (function () {
   let allProducts = [];
+  let allToppings = [];
 
-  function readLocalProducts() {
+  /* ---------- Загрузка ---------- */
+  async function loadData() {
     try {
-      const raw = localStorage.getItem('mock_products');
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) && parsed.length ? parsed : null;
-    } catch { return null; }
-  }
-
-  async function loadProducts() {
-    try {
-      const data = await window.api.get('/products');
-      const list = Array.isArray(data) ? data : (data.products || []);
-      if (list.length) { allProducts = list; return allProducts; }
-    } catch { /* fallthrough */ }
-    allProducts = readLocalProducts() || MOCK_PRODUCTS;
-    return allProducts;
+      const [p, t] = await Promise.all([
+        window.api.get('/products'),
+        window.api.get('/toppings').catch(() => ({ toppings: [] })),
+      ]);
+      allProducts = Array.isArray(p) ? p : (p.products || []);
+      allToppings = Array.isArray(t) ? t : (t.toppings || []);
+    } catch (err) {
+      console.warn('Не удалось загрузить данные:', err.message);
+      allProducts = [];
+      allToppings = [];
+    }
   }
 
   async function loadProduct(id) {
     try {
       const data = await window.api.get(`/products/${id}`);
-      const p = data.product || data;
-      if (p && p.id) return p;
-    } catch { /* fallthrough */ }
-    const local = readLocalProducts();
-    if (local) {
-      const found = local.find((p) => String(p.id) === String(id));
-      if (found) return found;
+      return data.product || data;
+    } catch (err) {
+      console.warn(`Товар #${id} не загружен:`, err.message);
+      return null;
     }
-    return MOCK_PRODUCTS.find((p) => String(p.id) === String(id)) || null;
   }
 
+  /* ---------- Утилиты ---------- */
   function formatPrice(n) { return Number(n).toLocaleString('ru-RU') + ' ₽'; }
   const CATEGORY_LABELS = { coffee: 'Кофе', tea: 'Чай', dessert: 'Десерт' };
 
@@ -51,48 +47,92 @@ const MOCK_PRODUCTS = [];
     }[c]));
   }
 
-  function getQtyInCart(id) {
-    const item = (window.Cart?.get() || []).find((i) => String(i.id) === String(id));
-    return item ? item.qty : 0;
+  function isDrink(product) {
+    return product.category === 'coffee' || product.category === 'tea';
   }
 
-  function renderActions(product) {
-    const qty = getQtyInCart(product.id);
-    if (qty <= 0) {
-      return `<button class="btn btn--primary" data-add-to-cart="${product.id}">В корзину</button>`;
-    }
+  function getSizes(product) {
+    if (Array.isArray(product.sizes) && product.sizes.length) return product.sizes;
+    return null;
+  }
+
+  /* Ключ позиции в корзине: product_id + size + toppings */
+  function buildKey(productId, sizeCode, toppingIds = []) {
+    const t = [...toppingIds].sort((a, b) => a - b).join('-');
+    return `${productId}_${sizeCode || ''}_${t}`;
+  }
+
+  function getCartQty(key) {
+    const items = window.Cart?.get() || [];
+    const found = items.find((i) => i.key === key);
+    return found ? found.qty : 0;
+  }
+
+  /* ---------- Карточка: размеры и действия ---------- */
+
+  function renderSizes(product, activeSize) {
+    const sizes = getSizes(product);
+    if (!sizes) return '';
     return `
-      <div class="qty-control">
-        <button class="qty-btn" type="button" data-qty-dec="${product.id}" aria-label="Уменьшить">−</button>
-        <input class="qty-input" type="number" min="1" inputmode="numeric"
-               value="${qty}" data-qty-input="${product.id}" aria-label="Количество">
-        <button class="qty-btn" type="button" data-qty-inc="${product.id}" aria-label="Увеличить">+</button>
+      <div class="size-picker" data-size-picker="${product.id}">
+        ${sizes.map((s) => `
+          <button type="button" class="size-chip ${s.code === activeSize ? 'size-chip--active' : ''}"
+                  data-size-chip="${s.code}" data-size-price="${s.price}">
+            ${s.code}
+          </button>
+        `).join('')}
       </div>
     `;
   }
 
-  function forceRenderActions(id) {
-    const el = document.querySelector(`[data-actions="${id}"]`);
-    if (!el) return;
-    const product = allProducts.find((p) => String(p.id) === String(id));
-    if (product) el.innerHTML = renderActions(product);
+  function activeSizeOf(product) {
+    const sizes = getSizes(product);
+    if (!sizes) return null;
+    return sizes[0].code;
+  }
+
+  function sizePrice(product, sizeCode) {
+    const sizes = getSizes(product);
+    if (!sizes) return Number(product.price);
+    const found = sizes.find((s) => s.code === sizeCode);
+    return found ? Number(found.price) : Number(product.price);
+  }
+
+  function renderActionsFor(product, sizeCode) {
+    const key = buildKey(product.id, sizeCode, []);
+    const qty = getCartQty(key);
+    if (qty <= 0) {
+      return `<button class="btn btn--primary" data-add-to-cart="${product.id}" data-add-size="${sizeCode || ''}">В корзину</button>`;
+    }
+    return `
+      <div class="qty-control">
+        <button class="qty-btn" type="button" data-qty-dec="${product.id}" data-qty-size="${sizeCode || ''}" aria-label="Уменьшить">−</button>
+        <input class="qty-input" type="number" min="1" inputmode="numeric"
+               value="${qty}" data-qty-input="${product.id}" data-qty-size="${sizeCode || ''}" aria-label="Количество">
+        <button class="qty-btn" type="button" data-qty-inc="${product.id}" data-qty-size="${sizeCode || ''}" aria-label="Увеличить">+</button>
+      </div>
+    `;
   }
 
   function renderCard(p) {
+    const size = activeSizeOf(p);
+    const price = sizePrice(p, size);
     return `
-      <article class="product-card">
+      <article class="product-card" data-product-card="${p.id}" data-active-size="${size || ''}">
         <a class="product-card__media" href="/product.html?id=${p.id}">
           <img src="${p.image_url || ''}" alt="${escapeHtml(p.name)}" loading="lazy">
+          ${p.is_seasonal ? '<span class="badge badge--accent product-card__season">Сезон</span>' : ''}
         </a>
         <div class="product-card__body">
           <h3 class="product-card__title">
             <a href="/product.html?id=${p.id}" style="color: inherit;">${escapeHtml(p.name)}</a>
           </h3>
           <p class="product-card__desc">${escapeHtml(p.description || '')}</p>
+          ${renderSizes(p, size)}
           <div class="product-card__footer">
-            <span class="price">${formatPrice(p.price)}</span>
+            <span class="price" data-card-price>${formatPrice(price)}</span>
             <div class="product-card__actions" data-actions="${p.id}">
-              ${renderActions(p)}
+              ${renderActionsFor(p, size)}
             </div>
           </div>
         </div>
@@ -100,112 +140,140 @@ const MOCK_PRODUCTS = [];
     `;
   }
 
-  function bindActions(root) {
-    root.addEventListener('click', (e) => {
+  /* ---------- Действия на карточках ---------- */
+
+  function bindCardActions(grid) {
+    /* Выбор размера */
+    grid.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-size-chip]');
+      if (chip) {
+        e.preventDefault();
+        const picker = chip.closest('[data-size-picker]');
+        const card = chip.closest('[data-product-card]');
+        const productId = picker.getAttribute('data-size-picker');
+        const sizeCode = chip.getAttribute('data-size-chip');
+        const price = Number(chip.getAttribute('data-size-price'));
+
+        // Обновляем активный чип
+        picker.querySelectorAll('[data-size-chip]').forEach((c) => {
+          c.classList.toggle('size-chip--active', c === chip);
+        });
+
+        card.setAttribute('data-active-size', sizeCode);
+        card.querySelector('[data-card-price]').textContent = formatPrice(price);
+
+        // Обновляем действия под новый размер
+        const product = allProducts.find((p) => String(p.id) === String(productId));
+        const actionsEl = card.querySelector('[data-actions]');
+        if (product && actionsEl) actionsEl.innerHTML = renderActionsFor(product, sizeCode);
+        return;
+      }
+
       const addBtn = e.target.closest('[data-add-to-cart]');
       if (addBtn) {
         const id = addBtn.getAttribute('data-add-to-cart');
+        const size = addBtn.getAttribute('data-add-size') || null;
         const product = allProducts.find((p) => String(p.id) === String(id));
-        if (product) {
-          window.Cart.add(product, 1);
-          // Мгновенный отклик — не ждём события cart:updated
-          forceRenderActions(id);
-          window.showToast?.(`«${product.name}» добавлен в корзину`);
-        }
+        if (!product) return;
+        window.Cart.add(product, { size, toppings: [] }, 1);
+        forceRenderActions(id, size);
+        window.showToast?.(`«${product.name}» добавлен`);
         return;
       }
 
       const decBtn = e.target.closest('[data-qty-dec]');
       if (decBtn) {
         const id = decBtn.getAttribute('data-qty-dec');
-        const input = decBtn.closest('[data-actions]')?.querySelector('[data-qty-input]');
-        if (input) input.blur();
-        const cur = getQtyInCart(id);
-        if (cur <= 1) window.Cart.remove(id);
-        else window.Cart.updateQty(id, cur - 1);
-        forceRenderActions(id);
+        const size = decBtn.getAttribute('data-qty-size') || null;
+        const key = buildKey(id, size, []);
+        const cur = getCartQty(key);
+        if (cur <= 1) window.Cart.remove(key);
+        else window.Cart.updateQty(key, cur - 1);
+        forceRenderActions(id, size);
         return;
       }
 
       const incBtn = e.target.closest('[data-qty-inc]');
       if (incBtn) {
         const id = incBtn.getAttribute('data-qty-inc');
-        const input = incBtn.closest('[data-actions]')?.querySelector('[data-qty-input]');
-        if (input) input.blur();
-        const cur = getQtyInCart(id);
+        const size = incBtn.getAttribute('data-qty-size') || null;
         const product = allProducts.find((p) => String(p.id) === String(id));
         if (!product) return;
-        if (cur === 0) window.Cart.add(product, 1);
-        else window.Cart.updateQty(id, cur + 1);
-        forceRenderActions(id);
+        const key = buildKey(id, size, []);
+        const cur = getCartQty(key);
+        if (cur === 0) window.Cart.add(product, { size, toppings: [] }, 1);
+        else window.Cart.updateQty(key, cur + 1);
+        forceRenderActions(id, size);
         return;
       }
     });
 
-    // Ручной ввод
-    root.addEventListener('input', (e) => {
+    /* Ручной ввод в поле qty */
+    grid.addEventListener('change', (e) => {
       const input = e.target.closest('[data-qty-input]');
       if (!input) return;
       const id = input.getAttribute('data-qty-input');
-      const value = parseInt(input.value, 10);
-      if (isNaN(value) || value < 1) return;
-      const cur = getQtyInCart(id);
-      if (value !== cur) {
-        const product = allProducts.find((p) => String(p.id) === String(id));
-        if (product) window.Cart.updateQty(id, value);
-      }
-    });
-
-    // Потеря фокуса / Enter — финализируем
-    root.addEventListener('change', (e) => {
-      const input = e.target.closest('[data-qty-input]');
-      if (!input) return;
-      const id = input.getAttribute('data-qty-input');
+      const size = input.getAttribute('data-qty-size') || null;
+      const key = buildKey(id, size, []);
       const raw = input.value.trim();
-      if (raw === '') {
-        const cur = getQtyInCart(id);
-        if (cur > 0) { forceRenderActions(id); return; }
-        window.Cart.remove(id);
-      } else {
-        const value = parseInt(raw, 10);
-        if (isNaN(value) || value <= 0) window.Cart.remove(id);
-        else window.Cart.updateQty(id, value);
-      }
-      forceRenderActions(id);
+      const value = parseInt(raw, 10);
+      if (isNaN(value) || value <= 0) window.Cart.remove(key);
+      else window.Cart.updateQty(key, value);
+      forceRenderActions(id, size);
     });
   }
 
-  // Синхронизация между вкладками и другими операциями.
-  // Важно: НЕ перерисовывать, если пользователь печатает в поле qty,
-  // иначе фокус потеряется. Кнопки/прочие элементы — перерисовываем всегда.
+  function forceRenderActions(productId, sizeCode) {
+    const card = document.querySelector(`[data-product-card="${productId}"]`);
+    if (!card) return;
+    const product = allProducts.find((p) => String(p.id) === String(productId));
+    if (!product) return;
+    const el = card.querySelector('[data-actions]');
+    if (el) el.innerHTML = renderActionsFor(product, sizeCode);
+  }
+
   function bindCartUpdates() {
     window.addEventListener('cart:updated', () => {
-      const active = document.activeElement;
-      document.querySelectorAll('[data-actions]').forEach((el) => {
-        if (active && el.contains(active) && active.matches('[data-qty-input]')) return;
-        const id = el.getAttribute('data-actions');
-        const product = allProducts.find((p) => String(p.id) === String(id));
-        if (product) el.innerHTML = renderActions(product);
+      document.querySelectorAll('[data-product-card]').forEach((card) => {
+        const id = card.getAttribute('data-product-card');
+        const size = card.getAttribute('data-active-size') || null;
+        forceRenderActions(id, size);
       });
     });
   }
 
+  /* ---------- Главная ---------- */
   async function initCatalog() {
     const grid = document.querySelector('[data-products]');
     if (!grid) return;
 
     grid.innerHTML = '<p class="text-muted">Загрузка товаров…</p>';
-    await loadProducts();
+    await loadData();
 
     function applyFilters() {
       const search = (document.querySelector('[data-search]')?.value || '').trim().toLowerCase();
       const category = document.querySelector('[data-category-filter]')?.value || '';
+      const seasonalOnly = document.querySelector('[data-seasonal-filter]')?.checked || false;
 
       const filtered = allProducts.filter((p) => {
         const name = String(p.name || '').toLowerCase();
-        return (!search || name.includes(search)) && (!category || p.category === category);
+        if (search && !name.includes(search)) return false;
+        if (category && p.category !== category) return false;
+        if (seasonalOnly && !p.is_seasonal) return false;
+        return true;
       });
 
+      // Сезонные всегда первыми (даже если сервер уже отсортировал)
+      filtered.sort((a, b) => {
+        if (a.is_seasonal && !b.is_seasonal) return -1;
+        if (!a.is_seasonal && b.is_seasonal) return 1;
+        return 0;
+      });
+
+      if (!allProducts.length) {
+        grid.innerHTML = '<p class="text-muted">В каталоге пока нет товаров.</p>';
+        return;
+      }
       if (!filtered.length) {
         grid.innerHTML = '<p class="text-muted">Ничего не найдено. Попробуйте изменить фильтры.</p>';
         return;
@@ -215,12 +283,14 @@ const MOCK_PRODUCTS = [];
 
     document.querySelector('[data-search]')?.addEventListener('input', applyFilters);
     document.querySelector('[data-category-filter]')?.addEventListener('change', applyFilters);
+    document.querySelector('[data-seasonal-filter]')?.addEventListener('change', applyFilters);
 
-    bindActions(grid);
+    bindCardActions(grid);
     bindCartUpdates();
     applyFilters();
   }
 
+  /* ---------- Страница товара ---------- */
   async function initProductPage() {
     const container = document.querySelector('[data-product]');
     if (!container) return;
@@ -232,8 +302,15 @@ const MOCK_PRODUCTS = [];
     }
 
     container.innerHTML = '<p class="text-muted">Загрузка…</p>';
-    const p = await loadProduct(id);
 
+    if (!allToppings.length) {
+      try {
+        const t = await window.api.get('/toppings').catch(() => ({ toppings: [] }));
+        allToppings = Array.isArray(t) ? t : (t.toppings || []);
+      } catch { /* уже пусто */ }
+    }
+
+    const p = await loadProduct(id);
     if (!p) {
       container.innerHTML = '<p class="text-muted">Товар не найден. <a href="/">Вернуться в каталог</a></p>';
       return;
@@ -242,19 +319,66 @@ const MOCK_PRODUCTS = [];
 
     document.title = `${p.name} — MyCoffeCup`;
 
+    const sizes = getSizes(p);
+    const isDrinkProduct = isDrink(p);
+    const initialSize = sizes ? sizes[0].code : null;
+    const initialPrice = sizePrice(p, initialSize);
+
     container.innerHTML = `
       <div class="product-detail">
         <div class="product-detail__media">
           <img src="${p.image_url || ''}" alt="${escapeHtml(p.name)}">
+          ${p.is_seasonal ? '<span class="badge badge--accent product-detail__season">Сезон</span>' : ''}
         </div>
         <div class="product-detail__content">
           <span class="badge badge--accent">${CATEGORY_LABELS[p.category] || p.category}</span>
           <h1 style="margin-top: var(--sp-2);">${escapeHtml(p.name)}</h1>
-          <p class="price" style="font-size: var(--fs-2xl);">${formatPrice(p.price)}</p>
           <p class="text-muted">${escapeHtml(p.description || '')}</p>
-          <div class="row" style="margin-top: var(--sp-4);">
-            <div data-actions="${p.id}">${renderActions(p)}</div>
+
+          ${sizes ? `
+            <div class="field" style="margin-top: var(--sp-4);">
+              <span class="field__label">Размер</span>
+              <div class="size-picker size-picker--lg" data-detail-sizes>
+                ${sizes.map((s) => `
+                  <button type="button" class="size-chip ${s.code === initialSize ? 'size-chip--active' : ''}"
+                          data-detail-size="${s.code}" data-detail-price="${s.price}">
+                    ${s.code} · ${formatPrice(s.price)}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${isDrinkProduct && allToppings.length ? `
+            <div class="field" style="margin-top: var(--sp-4);">
+              <span class="field__label">Добавки</span>
+              <div class="topping-list" data-detail-toppings>
+                ${allToppings.map((t) => `
+                  <label class="topping-item">
+                    <input type="checkbox" value="${t.id}"
+                           data-topping-check="${t.id}"
+                           data-topping-price="${t.price}"
+                           data-topping-name="${escapeHtml(t.name)}">
+                    <span class="topping-item__name">
+                      ${escapeHtml(t.name)}
+                      ${t.is_seasonal ? '<span class="badge badge--accent topping-item__season">сезон</span>' : ''}
+                    </span>
+                    <span class="topping-item__price">+${formatPrice(t.price)}</span>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="product-detail__total">
+            <span class="text-muted">Итого:</span>
+            <strong class="price" data-detail-total>${formatPrice(initialPrice)}</strong>
           </div>
+
+          <div class="row" style="margin-top: var(--sp-3);">
+            <div data-detail-actions></div>
+          </div>
+
           <p style="margin-top: var(--sp-4);">
             <a href="/">← Вернуться в каталог</a>
           </p>
@@ -262,8 +386,105 @@ const MOCK_PRODUCTS = [];
       </div>
     `;
 
-    bindActions(container);
-    bindCartUpdates();
+    /* Состояние страницы товара */
+    const state = {
+      product: p,
+      size: initialSize,
+      sizePrice: initialPrice,
+      toppings: [],  // [{id, name, price}]
+    };
+
+    function calcTotal() {
+      return state.sizePrice + state.toppings.reduce((s, t) => s + t.price, 0);
+    }
+
+    function currentKey() {
+      return buildKey(p.id, state.size, state.toppings.map((t) => t.id));
+    }
+
+    function updateTotalAndActions() {
+      const total = calcTotal();
+      const totalEl = container.querySelector('[data-detail-total]');
+      if (totalEl) totalEl.textContent = formatPrice(total);
+
+      const actionsEl = container.querySelector('[data-detail-actions]');
+      if (!actionsEl) return;
+
+      const qty = getCartQty(currentKey());
+      if (qty === 0) {
+        actionsEl.innerHTML = `<button class="btn btn--primary" data-detail-add>В корзину</button>`;
+      } else {
+        actionsEl.innerHTML = `
+          <div class="qty-control">
+            <button class="qty-btn" type="button" data-detail-dec>−</button>
+            <input class="qty-input" type="number" min="1" value="${qty}" data-detail-qty>
+            <button class="qty-btn" type="button" data-detail-inc>+</button>
+          </div>
+        `;
+      }
+    }
+
+    /* Обработчики */
+    container.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-detail-size]');
+      if (chip) {
+        const code = chip.getAttribute('data-detail-size');
+        const price = Number(chip.getAttribute('data-detail-price'));
+        state.size = code;
+        state.sizePrice = price;
+        container.querySelectorAll('[data-detail-size]').forEach((c) =>
+          c.classList.toggle('size-chip--active', c === chip));
+        updateTotalAndActions();
+        return;
+      }
+
+      if (e.target.closest('[data-detail-add]')) {
+        window.Cart.add(p, {
+          size: state.size,
+          toppings: state.toppings,
+        }, 1);
+        window.showToast?.(`«${p.name}» добавлен`);
+        updateTotalAndActions();
+        return;
+      }
+
+      if (e.target.closest('[data-detail-inc]')) {
+        window.Cart.updateQty(currentKey(), getCartQty(currentKey()) + 1);
+        updateTotalAndActions();
+        return;
+      }
+      if (e.target.closest('[data-detail-dec]')) {
+        const q = getCartQty(currentKey());
+        if (q <= 1) window.Cart.remove(currentKey());
+        else window.Cart.updateQty(currentKey(), q - 1);
+        updateTotalAndActions();
+        return;
+      }
+    });
+
+    /* Чекбоксы топпингов */
+    container.querySelectorAll('[data-topping-check]').forEach((chk) => {
+      chk.addEventListener('change', () => {
+        const tid = Number(chk.getAttribute('data-topping-check'));
+        const tprice = Number(chk.getAttribute('data-topping-price'));
+        const tname = chk.getAttribute('data-topping-name');
+        if (chk.checked) state.toppings.push({ id: tid, name: tname, price: tprice });
+        else state.toppings = state.toppings.filter((t) => t.id !== tid);
+        updateTotalAndActions();
+      });
+    });
+
+    /* Ручной ввод qty */
+    container.addEventListener('change', (e) => {
+      const input = e.target.closest('[data-detail-qty]');
+      if (!input) return;
+      const v = parseInt(input.value, 10);
+      if (isNaN(v) || v <= 0) window.Cart.remove(currentKey());
+      else window.Cart.updateQty(currentKey(), v);
+      updateTotalAndActions();
+    });
+
+    updateTotalAndActions();
   }
 
   function init() {

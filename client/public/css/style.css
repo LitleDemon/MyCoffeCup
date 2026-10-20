@@ -1400,3 +1400,132 @@ p { margin: 0 0 var(--sp-3); }
 .size-row input[type="number"] {
   padding: 8px 12px;
 }
+/* ---------- 27. Выбор размера ---------- */
+.size-picker {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  flex-wrap: wrap;
+}
+.size-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--color-card-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.size-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.size-chip--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.size-picker--lg .size-chip {
+  min-width: 80px;
+  height: 38px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+/* ---------- 28. Сезонный бейдж на карточке и товаре ---------- */
+.product-card__season {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  background: var(--color-accent);
+  color: #fff;
+  text-transform: uppercase;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(181, 101, 29, 0.4);
+}
+.product-card__media { position: relative; }
+.product-detail__media { position: relative; }
+.product-detail__season {
+  position: absolute;
+  top: var(--sp-3);
+  left: var(--sp-3);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ---------- 29. Топпинги на странице товара ---------- */
+.topping-list {
+  display: grid;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.topping-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--color-card-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.topping-item:hover { border-color: var(--color-highlight); }
+.topping-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+.topping-item__name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.topping-item__season {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.topping-item__price {
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+/* ---------- 30. Итого на странице товара ---------- */
+.product-detail__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  margin-top: var(--sp-4);
+  border-top: 1px solid var(--color-border);
+}
+.product-detail__total .price { font-size: var(--fs-2xl); }
+
+/* ---------- 31. Позиция в корзине: варианты ---------- */
+.cart-item__info { min-width: 0; }
+.cart-item__variant {
+  font-size: var(--fs-xs);
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 340px;
+}
+.cart-item__price-unit {
+  font-size: var(--fs-xs);
+  margin-top: 2px;
+  color: var(--color-text-muted);
+}
