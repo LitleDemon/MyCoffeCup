@@ -4,7 +4,7 @@
  *
  * Данные до появления бэкенда хранятся в localStorage:
  *   mock_products, mock_posts — используются также catalog.js и blog.js.
- *   mock_orders — только для админки.
+ *   mock_orders — только для админки (fallback при недоступности сервера).
  *
  * Цвета Chart.js подогнаны под картонную тему (Eco Cardboard):
  *   primary = #2D6A4F, accent = #B5651D, grid = #C9B896.
@@ -17,14 +17,13 @@
 
   const fmtPrice = (n) => Number(n).toLocaleString('ru-RU') + ' ₽';
 
-  /* Цвета темы для графиков */
   const CHART_COLORS = {
-    primary: '#2D6A4F',       // лесной зелёный
-    primaryHover: '#1B4332',  // тёмный зелёный
-    accent: '#B5651D',        // глина/охра
-    warning: '#C78C2E',       // охра светлее
-    grid: '#C9B896',          // край картона — линии сетки
-    text: '#5C5242',          // серо-коричневый текст
+    primary: '#2D6A4F',
+    primaryHover: '#1B4332',
+    accent: '#B5651D',
+    warning: '#C78C2E',
+    grid: '#C9B896',
+    text: '#5C5242',
   };
 
   const STATUS_LABEL = {
@@ -58,7 +57,7 @@
     localStorage.setItem(key, JSON.stringify(data));
   }
 
-  /* Модалки — открытие/закрытие по data-атрибутам */
+  /* Модалки */
   function bindModal(modalSelector) {
     const modal = document.querySelector(modalSelector);
     if (!modal) return { open: () => {}, close: () => {}, setTitle: () => {} };
@@ -121,7 +120,7 @@
         tbody.innerHTML = recent.map((o) => `
           <tr>
             <td>#${o.id}</td>
-            <td>${escapeHtml(o.customer || '—')}</td>
+            <td>${escapeHtml(o.customer_name || o.customer || '—')}</td>
             <td>${fmtPrice(o.total)}</td>
             <td><span class="badge ${STATUS_CLASS[o.status] || 'badge--new'}">${STATUS_LABEL[o.status] || o.status}</span></td>
             <td>${new Date(o.created_at).toLocaleDateString('ru-RU')}</td>
@@ -134,36 +133,37 @@
   async function loadKpis() {
     try {
       return await window.api.get('/admin/stats');
-    } catch {
+    } catch (err) {
+      if (!err.isNetworkError) {
+        // Не критично для дашборда — просто вернём нули
+        console.warn('stats API:', err.message);
+      }
       return {
-        revenue: 128_450,
-        orders: 342,
-        avgCheck: 376,
-        newUsers: 48,
+        revenue: 0,
+        orders: 0,
+        avgCheck: 0,
+        newUsers: 0,
         salesByDay: [
-          { day: 'Пн', value: 18400 }, { day: 'Вт', value: 21200 },
-          { day: 'Ср', value: 16800 }, { day: 'Чт', value: 23400 },
-          { day: 'Пт', value: 28900 }, { day: 'Сб', value: 31200 },
-          { day: 'Вс', value: 24100 },
+          { day: 'Пн', value: 0 }, { day: 'Вт', value: 0 },
+          { day: 'Ср', value: 0 }, { day: 'Чт', value: 0 },
+          { day: 'Пт', value: 0 }, { day: 'Сб', value: 0 },
+          { day: 'Вс', value: 0 },
         ],
-        topProducts: [
-          { name: 'Латте',     value: 128 },
-          { name: 'Капучино',  value: 96  },
-          { name: 'Круассан',  value: 74  },
-          { name: 'Чизкейк',   value: 58  },
-          { name: 'Американо', value: 43  },
-        ],
+        topProducts: [],
       };
     }
   }
 
   async function loadOrders() {
     try {
-      const data = await window.api.get('/admin/orders');
-      const list = Array.isArray(data) ? data : (data.orders || []);
-      if (list.length) return list;
-    } catch { /* fallthrough */ }
-    return readMock('mock_orders', []);
+      const data = await window.api.get('/orders');
+      return Array.isArray(data) ? data : (data.orders || []);
+    } catch (err) {
+      if (err.isNetworkError) {
+        return readMock('mock_orders', []);
+      }
+      return [];
+    }
   }
 
   function renderSalesChart(salesByDay) {
@@ -304,7 +304,7 @@
       modal.open();
     }
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       const id = fd.get('id');
@@ -317,20 +317,44 @@
         description: fd.get('description').trim(),
       };
 
-      if (id) {
-        const idx = products.findIndex((p) => String(p.id) === String(id));
-        if (idx !== -1) products[idx] = { ...products[idx], ...data };
-      } else {
-        data.id = Date.now();
-        products.push(data);
+      try {
+        let saved;
+        if (id) {
+          saved = await window.api.put(`/products/${id}`, data);
+        } else {
+          saved = await window.api.post('/products', data);
+        }
+
+        if (id) {
+          const idx = products.findIndex((p) => String(p.id) === String(id));
+          if (idx !== -1) products[idx] = { ...products[idx], ...saved };
+        } else {
+          products.push(saved);
+        }
+        render();
+        modal.close();
+        window.showToast?.('Товар сохранён');
+      } catch (err) {
+        if (err.isNetworkError) {
+          // Fallback на localStorage
+          if (id) {
+            const idx = products.findIndex((p) => String(p.id) === String(id));
+            if (idx !== -1) products[idx] = { ...products[idx], ...data };
+          } else {
+            data.id = Date.now();
+            products.push(data);
+          }
+          writeMock('mock_products', products);
+          render();
+          modal.close();
+          window.showToast?.('Товар сохранён (локально)');
+        } else {
+          window.showToast?.(err.message || 'Не удалось сохранить товар');
+        }
       }
-      writeMock('mock_products', products);
-      render();
-      modal.close();
-      window.showToast?.('Товар сохранён (локально)');
     });
 
-    tbody.addEventListener('click', (e) => {
+    tbody.addEventListener('click', async (e) => {
       const editBtn = e.target.closest('[data-edit]');
       const delBtn = e.target.closest('[data-delete]');
       if (editBtn) {
@@ -340,10 +364,21 @@
       if (delBtn) {
         if (!confirm('Удалить товар?')) return;
         const id = delBtn.getAttribute('data-delete');
-        products = products.filter((p) => String(p.id) !== String(id));
-        writeMock('mock_products', products);
-        render();
-        window.showToast?.('Товар удалён (локально)');
+        try {
+          await window.api.delete(`/products/${id}`);
+          products = products.filter((p) => String(p.id) !== String(id));
+          render();
+          window.showToast?.('Товар удалён');
+        } catch (err) {
+          if (err.isNetworkError) {
+            products = products.filter((p) => String(p.id) !== String(id));
+            writeMock('mock_products', products);
+            render();
+            window.showToast?.('Товар удалён (локально)');
+          } else {
+            window.showToast?.(err.message || 'Не удалось удалить товар');
+          }
+        }
       }
     });
 
@@ -412,7 +447,7 @@
       modal.open();
     }
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       const id = fd.get('id');
@@ -424,22 +459,45 @@
         body: fd.get('body').trim(),
       };
 
-      if (id) {
-        const idx = posts.findIndex((p) => String(p.id) === String(id));
-        if (idx !== -1) posts[idx] = { ...posts[idx], ...data };
-      } else {
-        data.id = Date.now();
-        data.author = user?.name || 'Администратор';
-        data.created_at = new Date().toISOString();
-        posts.unshift(data);
+      try {
+        let saved;
+        if (id) {
+          saved = await window.api.put(`/posts/${id}`, data);
+        } else {
+          saved = await window.api.post('/posts', data);
+        }
+
+        if (id) {
+          const idx = posts.findIndex((p) => String(p.id) === String(id));
+          if (idx !== -1) posts[idx] = { ...posts[idx], ...saved };
+        } else {
+          posts.unshift(saved);
+        }
+        render();
+        modal.close();
+        window.showToast?.('Статья сохранена');
+      } catch (err) {
+        if (err.isNetworkError) {
+          if (id) {
+            const idx = posts.findIndex((p) => String(p.id) === String(id));
+            if (idx !== -1) posts[idx] = { ...posts[idx], ...data };
+          } else {
+            data.id = Date.now();
+            data.author = user?.name || 'Администратор';
+            data.created_at = new Date().toISOString();
+            posts.unshift(data);
+          }
+          writeMock('mock_posts', posts);
+          render();
+          modal.close();
+          window.showToast?.('Статья сохранена (локально)');
+        } else {
+          window.showToast?.(err.message || 'Не удалось сохранить статью');
+        }
       }
-      writeMock('mock_posts', posts);
-      render();
-      modal.close();
-      window.showToast?.('Статья сохранена (локально)');
     });
 
-    tbody.addEventListener('click', (e) => {
+    tbody.addEventListener('click', async (e) => {
       const editBtn = e.target.closest('[data-edit]');
       const delBtn = e.target.closest('[data-delete]');
       if (editBtn) {
@@ -449,10 +507,21 @@
       if (delBtn) {
         if (!confirm('Удалить статью?')) return;
         const id = delBtn.getAttribute('data-delete');
-        posts = posts.filter((p) => String(p.id) !== String(id));
-        writeMock('mock_posts', posts);
-        render();
-        window.showToast?.('Статья удалена (локально)');
+        try {
+          await window.api.delete(`/posts/${id}`);
+          posts = posts.filter((p) => String(p.id) !== String(id));
+          render();
+          window.showToast?.('Статья удалена');
+        } catch (err) {
+          if (err.isNetworkError) {
+            posts = posts.filter((p) => String(p.id) !== String(id));
+            writeMock('mock_posts', posts);
+            render();
+            window.showToast?.('Статья удалена (локально)');
+          } else {
+            window.showToast?.(err.message || 'Не удалось удалить статью');
+          }
+        }
       }
     });
 
@@ -483,22 +552,38 @@
     const filter = document.querySelector('[data-status-filter]');
     if (!tbody) return;
 
-    let orders = await loadOrders();
+    let orders = [];
     let statusFilter = '';
 
-    function render() {
-      const filtered = statusFilter
-        ? orders.filter((o) => o.status === statusFilter)
-        : orders;
+    async function fetchOrders() {
+      try {
+        const url = statusFilter
+          ? `/orders?status=${encodeURIComponent(statusFilter)}`
+          : '/orders';
+        const data = await window.api.get(url);
+        orders = Array.isArray(data) ? data : (data.orders || []);
+      } catch (err) {
+        if (err.isNetworkError) {
+          orders = readMock('mock_orders', []);
+          orders = statusFilter
+            ? orders.filter((o) => o.status === statusFilter)
+            : orders;
+        } else {
+          window.showToast?.(err.message || 'Не удалось загрузить заказы');
+          orders = [];
+        }
+      }
+    }
 
-      if (!filtered.length) {
+    function render() {
+      if (!orders.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Заказов нет</td></tr>';
         return;
       }
-      tbody.innerHTML = filtered.map((o) => `
+      tbody.innerHTML = orders.map((o) => `
         <tr>
           <td>#${o.id}</td>
-          <td>${escapeHtml(o.customer || '—')}</td>
+          <td>${escapeHtml(o.customer_name || o.customer || '—')}</td>
           <td>${fmtPrice(o.total)}</td>
           <td>
             <select class="select" data-order-status="${o.id}" style="padding: 6px 10px;">
@@ -515,22 +600,42 @@
       `).join('');
     }
 
+    async function reload() {
+      await fetchOrders();
+      render();
+    }
+
     if (filter) {
-      filter.addEventListener('change', () => {
+      filter.addEventListener('change', async () => {
         statusFilter = filter.value;
-        render();
+        await reload();
       });
     }
 
-    tbody.addEventListener('change', (e) => {
+    tbody.addEventListener('change', async (e) => {
       const sel = e.target.closest('[data-order-status]');
       if (!sel) return;
       const id = sel.getAttribute('data-order-status');
-      const order = orders.find((o) => String(o.id) === String(id));
-      if (order) {
-        order.status = sel.value;
-        writeMock('mock_orders', orders);
-        window.showToast?.(`Статус заказа #${id} — ${STATUS_LABEL[sel.value]}`);
+      const newStatus = sel.value;
+
+      try {
+        await window.api.patch(`/orders/${id}/status`, { status: newStatus });
+        const order = orders.find((o) => String(o.id) === String(id));
+        if (order) order.status = newStatus;
+        window.showToast?.(`Статус заказа #${id} — ${STATUS_LABEL[newStatus]}`);
+      } catch (err) {
+        if (err.isNetworkError) {
+          const list = readMock('mock_orders', []);
+          const order = list.find((o) => String(o.id) === String(id));
+          if (order) {
+            order.status = newStatus;
+            writeMock('mock_orders', list);
+          }
+          window.showToast?.(`Статус заказа #${id} — ${STATUS_LABEL[newStatus]} (локально)`);
+        } else {
+          window.showToast?.(err.message || 'Не удалось изменить статус');
+          await reload();
+        }
       }
     });
 
@@ -540,20 +645,21 @@
       const id = btn.getAttribute('data-receipt');
       const order = orders.find((o) => String(o.id) === String(id));
       if (!order) return;
+      const items = order.items || [];
       const w = window.open('', '_blank');
       w.document.write(`
         <pre style="font-family: monospace; padding: 20px; font-size: 14px; background: #FBF7EE; color: #1C2B22;">
-    ╔══════════════════════════════════════╗
-    ║             MyCoffeCup               ║
-    ║Новосибирск. Улица Красный Проспект 38║
-    ╚══════════════════════════════════════╝
+    ╔═══════════════════════════════════════╗
+    ║              MyCoffeCup               ║
+    ║  Новосибирск, Ул. Красный Проспект 38 ║
+    ╚═══════════════════════════════════════╝
 
     Заказ #${order.id}
     Дата:  ${new Date(order.created_at).toLocaleString('ru-RU')}
-    Клиент: ${order.customer || '—'}
+    Клиент: ${order.customer_name || '—'}
     ────────────────────────────────────
-    ${(order.items || []).map((it) =>
-      `${it.name || it.product_id} × ${it.qty} = ${fmtPrice((it.price || 0) * it.qty)}`
+    ${items.map((it) =>
+      `${it.name || 'Товар'} × ${it.qty} = ${fmtPrice((Number(it.price) || 0) * it.qty)}`
     ).join('\n    ')}
     ────────────────────────────────────
     ИТОГО: ${fmtPrice(order.total)}
@@ -564,7 +670,7 @@
       `);
     });
 
-    render();
+    await reload();
   }
 
   /* ============================================================

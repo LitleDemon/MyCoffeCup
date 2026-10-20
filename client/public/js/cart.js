@@ -3,6 +3,10 @@
  * Экспортирует window.Cart: { get, add, remove, updateQty, clear, getTotal }.
  * На cart.html рендерит содержимое с контролом количества [−] [N] [+],
  * удаляет товар при уходе количества в 0.
+ *
+ * Оформление заказа: POST /api/orders.
+ * При сетевой ошибке — fallback в localStorage (last_order).
+ * При HTTP-ошибке от сервера — показываем сообщение, корзину НЕ трогаем.
  */
 
 (function () {
@@ -166,7 +170,6 @@
       const cur = getCart().find((i) => String(i.id) === String(id));
       if (!cur || cur.qty === value) return;
 
-      // обновляем только данные корзины и сумму строки, не перерисовывая
       const items = getCart();
       const item = items.find((i) => String(i.id) === String(id));
       if (item) item.qty = value;
@@ -217,26 +220,36 @@
       window.showToast?.('Корзина пуста');
       return;
     }
-    const totals = getTotal();
     const stickers = window.getOrderStickers?.() || [];
     const order = {
-      items: items.map((i) => ({ product_id: i.id, qty: i.qty, price: i.price })),
-      total: totals.sum,
+      items: items.map((i) => ({ product_id: i.id, qty: i.qty })),
       stickers,
     };
 
     try {
-      await window.api.post('/orders', order);
+      const created = await window.api.post('/orders', order);
       clear();
       window.clearOrderStickers?.();
-      window.showToast?.('Заказ оформлен!');
-      setTimeout(() => (location.href = '/'), 800);
+      window.showToast?.(`Заказ #${created.id} оформлен!`);
+      setTimeout(() => (location.href = '/'), 900);
     } catch (err) {
+      if (!err.isNetworkError) {
+        // Сервер вернул ошибку — показываем её, корзину не трогаем
+        window.showToast?.(err.message || 'Не удалось оформить заказ');
+        return;
+      }
+
+      // Сервер недоступен — fallback для проверки
+      const totals = getTotal();
       console.warn('Оформление через API недоступно:', err.message);
-      localStorage.setItem('last_order', JSON.stringify({ ...order, created_at: new Date().toISOString() }));
+      localStorage.setItem('last_order', JSON.stringify({
+        ...order,
+        total: totals.sum,
+        created_at: new Date().toISOString(),
+      }));
       clear();
       window.clearOrderStickers?.();
-      window.showToast?.('Заказ сохранён локально (бэкенд ещё не подключён)');
+      window.showToast?.('Заказ сохранён локально (бэкенд не подключён)');
       setTimeout(() => (location.href = '/'), 1200);
     }
   }
@@ -246,7 +259,6 @@
     if (document.querySelector('[data-cart-items]')) {
       renderCart();
       bindCartEvents();
-      // Другие вкладки тоже обновляют корзину
       window.addEventListener('storage', (e) => {
         if (e.key === CART_KEY) renderCart();
       });

@@ -5,6 +5,7 @@ const path = require('path');
 
 const productRoutes = require('./routes/productRoutes');
 const authRoutes = require('./routes/authRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* ---------- Простое логирование запросов ---------- */
+/* ---------- Логирование API ---------- */
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
     console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl}`);
@@ -23,8 +24,8 @@ app.use((req, res, next) => {
 
 /* ---------- API ---------- */
 app.use('/api/products', productRoutes);
-app.use('/api/auth', authRoutes); 
-// здесь дальше: /api/auth, /api/orders, /api/posts, /api/admin
+app.use('/api/auth', authRoutes);
+app.use('/api/orders', orderRoutes);
 
 /* ---------- 404 для API ---------- */
 app.use('/api', (req, res) => {
@@ -60,5 +61,7 @@ app.listen(PORT, () => {
   console.log(`🧾 Заказы:     http://localhost:${PORT}/admin/orders.html`);
   console.log('─────────────────────────────────────');
   console.log(`🔌 API:        http://localhost:${PORT}/api/products`);
+  console.log(`🔌 Auth:       http://localhost:${PORT}/api/auth/login`);
+  console.log(`🔌 Orders:     http://localhost:${PORT}/api/orders`);
   console.log('');
 });
