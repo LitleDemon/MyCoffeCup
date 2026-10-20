@@ -1,7 +1,13 @@
 /**
  * auth.js — вход и регистрация на login.html.
- * Пока нет бэкенда: мок-пользователи + пользователи из localStorage.mock_users.
- * Демо-аккаунты: admin@coffee.ru / admin123 (админ), user@coffee.ru / user123.
+ *
+ * Приоритет: реальный бэкенд (/api/auth/*).
+ * Моки в localStorage используются только если сервер недоступен
+ * (err.isNetworkError === true). Любая HTTP-ошибка от сервера
+ * (400/401/409/500) показывается пользователю как есть.
+ *
+ * Демо-аккаунты для fallback: admin@coffee.ru / admin123 (админ),
+ * user@coffee.ru / user123.
  */
 
 const MOCK_USERS = [
@@ -100,7 +106,14 @@ const MOCK_USERS = [
         window.showToast?.(`Добро пожаловать, ${data.user.name || data.user.email}!`);
         redirectAfterAuth(data.user);
       } catch (err) {
-        // Fallback на мок
+        // HTTP-ошибка от сервера — показываем её, моки НЕ используем
+        if (!err.isNetworkError) {
+          showError(form, err.message || 'Не удалось войти');
+          submitBtn.disabled = false;
+          return;
+        }
+
+        // Сервер недоступен — fallback на моки
         const user = getUsers().find(
           (u) => u.email === email && u.password === password
         );
@@ -142,10 +155,6 @@ const MOCK_USERS = [
         showError(form, 'Пароль должен быть не короче 6 символов');
         return;
       }
-      if (getUsers().some((u) => u.email === email)) {
-        showError(form, 'Пользователь с таким email уже существует');
-        return;
-      }
 
       const submitBtn = form.querySelector('button[type="submit"]');
       submitBtn.disabled = true;
@@ -158,7 +167,20 @@ const MOCK_USERS = [
         window.showToast?.(`Аккаунт создан. Добро пожаловать, ${data.user.name}!`);
         redirectAfterAuth(data.user);
       } catch (err) {
-        // Fallback: локальный мок-пользователь
+        // HTTP-ошибка от сервера — показываем её, моки НЕ используем
+        if (!err.isNetworkError) {
+          showError(form, err.message || 'Не удалось зарегистрироваться');
+          submitBtn.disabled = false;
+          return;
+        }
+
+        // Сервер недоступен — fallback на локальную регистрацию
+        if (getUsers().some((u) => u.email === email)) {
+          showError(form, 'Пользователь с таким email уже существует');
+          submitBtn.disabled = false;
+          return;
+        }
+
         const newUser = {
           id: Date.now(),
           name,

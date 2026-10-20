@@ -1,11 +1,49 @@
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
+
+const productRoutes = require('./routes/productRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+/* ---------- Парсеры тела ---------- */
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+/* ---------- Простое логирование запросов ---------- */
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl}`);
+  }
+  next();
+});
+
+/* ---------- API ---------- */
+app.use('/api/products', productRoutes);
+app.use('/api/auth', authRoutes); 
+// здесь дальше: /api/auth, /api/orders, /api/posts, /api/admin
+
+/* ---------- 404 для API ---------- */
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'API-метод не найден' });
+});
+
+/* ---------- Статика ---------- */
 app.use(express.static(path.join(__dirname, '..', 'client', 'public')));
 
+/* ---------- Общий обработчик ошибок ---------- */
+app.use((err, req, res, next) => {
+  console.error('Ошибка:', err);
+  const status = err.status || 500;
+  res.status(status).json({
+    message: err.message || 'Внутренняя ошибка сервера',
+  });
+});
+
+/* ---------- Запуск ---------- */
 app.listen(PORT, () => {
   console.log('');
   console.log('🚀 Сервер запущен');
@@ -21,5 +59,6 @@ app.listen(PORT, () => {
   console.log(`📄 Контент:    http://localhost:${PORT}/admin/content.html`);
   console.log(`🧾 Заказы:     http://localhost:${PORT}/admin/orders.html`);
   console.log('─────────────────────────────────────');
+  console.log(`🔌 API:        http://localhost:${PORT}/api/products`);
   console.log('');
 });

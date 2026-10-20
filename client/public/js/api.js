@@ -7,6 +7,11 @@
  *
  * Токен хранится в localStorage под ключом 'token',
  * данные пользователя — под ключом 'user'.
+ *
+ * Ошибки:
+ *   - Сетевая ошибка (сервер недоступен) — err.isNetworkError === true.
+ *   - HTTP-ошибка (400/401/404/500) — err.message из ответа сервера,
+ *     err.status — HTTP-код.
  */
 
 const API_BASE = '/api';
@@ -66,7 +71,9 @@ const api = {
         body: body !== undefined ? JSON.stringify(body) : undefined,
       });
     } catch (err) {
-      throw new Error('Нет связи с сервером. Проверьте, запущен ли бэкенд.');
+      const netErr = new Error('Нет связи с сервером. Проверьте, запущен ли бэкенд.');
+      netErr.isNetworkError = true;
+      throw netErr;
     }
 
     let data = null;
@@ -80,16 +87,21 @@ const api = {
     }
 
     if (!res.ok) {
-      // 401 — токен протух, чистим
+      // 401 — токен протух или невалиден, чистим сессию
       if (res.status === 401) {
         this.clearToken();
         this.clearUser();
       }
+
       const message =
         (data && data.message) ||
         (data && data.error) ||
         `Ошибка ${res.status}`;
-      throw new Error(message);
+
+      const err = new Error(message);
+      err.status = res.status;
+      err.data = data;
+      throw err;
     }
 
     return data;
