@@ -700,6 +700,175 @@
       return [];
     }
   }
+    /* ============================================================
+     TOPPINGS
+     ============================================================ */
+
+  const TOPPING_TYPE_LABEL = { syrup: 'Сироп', topping: 'Топпинг' };
+
+  async function initToppings() {
+    const tbody = document.querySelector('[data-toppings-table]');
+    const modal = bindModal('[data-topping-modal]');
+    const form = document.querySelector('[data-topping-form]');
+    if (!tbody || !form) return;
+
+    let toppings = await loadToppingsAdmin();
+
+    /* Показ поля "действует до" только для сезонных */
+    const seasonalCheck = form.querySelector('[data-is-seasonal]');
+    const expiresField = form.querySelector('[data-expires-field]');
+    function toggleExpires() {
+      if (expiresField) expiresField.hidden = !seasonalCheck.checked;
+    }
+    seasonalCheck?.addEventListener('change', toggleExpires);
+
+    function render() {
+      if (!toppings.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Топпингов пока нет</td></tr>';
+        return;
+      }
+      tbody.innerHTML = toppings.map((t) => {
+        const season = t.is_seasonal
+          ? `<span class="badge badge--accent">сезон${t.expires_at ? ' до ' + t.expires_at : ''}</span>`
+          : '—';
+        const status = t.is_active
+          ? '<span class="badge badge--success">активен</span>'
+          : '<span class="badge badge--error">скрыт</span>';
+        return `
+          <tr>
+            <td>${t.id}</td>
+            <td>${escapeHtml(t.name)}</td>
+            <td>${TOPPING_TYPE_LABEL[t.type] || t.type}</td>
+            <td>${fmtPrice(t.price)}</td>
+            <td>${status}</td>
+            <td>${season}</td>
+            <td class="table-actions">
+              <button class="btn" data-edit="${t.id}" title="Редактировать">✎</button>
+              <button class="btn" data-delete="${t.id}" title="Удалить">🗑</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openForCreate() {
+      form.reset();
+      form.querySelector('[name="id"]').value = '';
+      form.querySelector('[name="is_active"]').checked = true;
+      form.querySelector('[name="is_seasonal"]').checked = false;
+      form.querySelector('[name="expires_at"]').value = '';
+      toggleExpires();
+      modal.setTitle('Новый топпинг');
+      modal.open();
+    }
+
+    function openForEdit(t) {
+      form.reset();
+      form.querySelector('[name="id"]').value = t.id;
+      form.querySelector('[name="name"]').value = t.name || '';
+      form.querySelector('[name="type"]').value = t.type || 'syrup';
+      form.querySelector('[name="price"]').value = t.price;
+      form.querySelector('[name="is_active"]').checked = Boolean(t.is_active);
+      form.querySelector('[name="is_seasonal"]').checked = Boolean(t.is_seasonal);
+      form.querySelector('[name="expires_at"]').value = t.expires_at || '';
+      toggleExpires();
+      modal.setTitle('Редактировать топпинг');
+      modal.open();
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorEl = form.querySelector('[data-error]');
+      errorEl.hidden = true;
+
+      const fd = new FormData(form);
+      const id = fd.get('id');
+      const data = {
+        name: fd.get('name').trim(),
+        type: fd.get('type'),
+        price: Number(fd.get('price')),
+        is_active: fd.get('is_active') === 'on',
+        is_seasonal: fd.get('is_seasonal') === 'on',
+        expires_at: fd.get('is_seasonal') === 'on' ? (fd.get('expires_at') || null) : null,
+      };
+
+      if (!data.name) {
+        errorEl.textContent = 'Название обязательно';
+        errorEl.hidden = false;
+        return;
+      }
+      if (isNaN(data.price) || data.price < 0) {
+        errorEl.textContent = 'Укажите корректную цену';
+        errorEl.hidden = false;
+        return;
+      }
+
+      try {
+        let saved;
+        if (id) saved = await window.api.put(`/toppings/${id}`, data);
+        else saved = await window.api.post('/toppings', data);
+
+        if (id) {
+          const idx = toppings.findIndex((t) => String(t.id) === String(id));
+          if (idx !== -1) toppings[idx] = saved;
+        } else {
+          toppings.push(saved);
+        }
+        toppings = await loadToppingsAdmin(); // пересортируем по правилам сервера
+        render();
+        modal.close();
+        window.showToast?.('Топпинг сохранён');
+      } catch (err) {
+        if (err.isNetworkError) {
+          window.showToast?.('Нет связи с сервером');
+        } else {
+          errorEl.textContent = err.message || 'Не удалось сохранить';
+          errorEl.hidden = false;
+        }
+      }
+    });
+
+    tbody.addEventListener('click', async (e) => {
+      const editBtn = e.target.closest('[data-edit]');
+      const delBtn = e.target.closest('[data-delete]');
+
+      if (editBtn) {
+        const t = toppings.find((x) => String(x.id) === editBtn.getAttribute('data-edit'));
+        if (t) openForEdit(t);
+      }
+      if (delBtn) {
+        if (!confirm('Удалить топпинг?')) return;
+        const id = delBtn.getAttribute('data-delete');
+        try {
+          await window.api.delete(`/toppings/${id}`);
+          toppings = toppings.filter((t) => String(t.id) !== String(id));
+          render();
+          window.showToast?.('Топпинг удалён');
+        } catch (err) {
+          if (err.status === 404) {
+            toppings = toppings.filter((t) => String(t.id) !== String(id));
+            render();
+            window.showToast?.('Топпинг уже отсутствовал — убран из списка');
+          } else {
+            window.showToast?.(err.message || 'Не удалось удалить');
+          }
+        }
+      }
+    });
+
+    document.querySelector('[data-open-topping-modal]')?.addEventListener('click', openForCreate);
+    render();
+  }
+
+  async function loadToppingsAdmin() {
+    try {
+      const data = await window.api.get('/toppings/admin');
+      return Array.isArray(data) ? data : (data.toppings || []);
+    } catch (err) {
+      console.warn('Не удалось загрузить топпинги:', err.message);
+      return [];
+    }
+  }
 
   /* ============================================================
      ORDERS
@@ -826,6 +995,7 @@
     if (path.includes('/dashboard'))      initDashboard();
     else if (path.includes('/products'))  initProducts();
     else if (path.includes('/content'))   initContent();
+    else if (path.includes('/toppings'))  initToppings();   
     else if (path.includes('/orders'))    initOrders();
   }
 
@@ -834,4 +1004,5 @@
   } else {
     init();
   }
+  
 })();
