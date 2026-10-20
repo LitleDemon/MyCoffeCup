@@ -8,6 +8,7 @@
   --color-surface:   #FBF7EE;
   --color-surface-2: #E3D5B8;
   --color-card-body: #EFE3C7;
+  --color-paper:     #F2E6C9;
 
   --color-text:       #1C2B22;
   --color-text-muted: #5C5242;
@@ -358,13 +359,54 @@ p { margin: 0 0 var(--sp-3); }
 .field__hint { font-size: var(--fs-xs); color: var(--color-text-muted); }
 .field__error { font-size: var(--fs-xs); color: var(--color-error); }
 
+/* --- Кастомные чекбоксы (тёплая бумага) --- */
 .checkbox {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
   font-size: var(--fs-sm);
+  cursor: pointer;
 }
-.checkbox input { accent-color: var(--color-primary); width: 18px; height: 18px; }
+.checkbox input[type="checkbox"],
+.topping-item input[type="checkbox"],
+.size-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  background: var(--color-paper);
+  border: 1.5px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+.checkbox input[type="checkbox"]:hover,
+.topping-item input[type="checkbox"]:hover,
+.size-row input[type="checkbox"]:hover {
+  border-color: var(--color-primary);
+}
+.checkbox input[type="checkbox"]:checked,
+.topping-item input[type="checkbox"]:checked,
+.size-row input[type="checkbox"]:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.checkbox input[type="checkbox"]:checked::after,
+.topping-item input[type="checkbox"]:checked::after,
+.size-row input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 1px;
+  width: 5px;
+  height: 11px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
 
 /* ---------- 8. Бейджи ---------- */
 .badge {
@@ -411,6 +453,7 @@ p { margin: 0 0 var(--sp-3); }
   background: var(--color-surface-2);
   overflow: hidden;
   display: block;
+  position: relative;
 }
 .product-card__media img {
   width: 100%;
@@ -452,6 +495,17 @@ p { margin: 0 0 var(--sp-3); }
 }
 
 .product-card__actions { display: flex; justify-content: flex-end; }
+
+.product-card__season {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  background: var(--color-accent);
+  color: #fff;
+  text-transform: uppercase;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(181, 101, 29, 0.4);
+}
 
 .price {
   font-weight: 700;
@@ -514,6 +568,9 @@ p { margin: 0 0 var(--sp-3); }
   gap: var(--sp-6);
   align-items: start;
 }
+.product-detail__media {
+  position: relative;
+}
 .product-detail__media img {
   width: 100%;
   border-radius: var(--radius-lg);
@@ -521,6 +578,14 @@ p { margin: 0 0 var(--sp-3); }
   object-fit: cover;
   border: 1px solid var(--color-border);
   box-shadow: 0 20px 44px rgba(45, 106, 79, 0.14);
+}
+.product-detail__season {
+  position: absolute;
+  top: var(--sp-3);
+  left: var(--sp-3);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
 }
 .product-detail__content {
   background: var(--color-card-body);
@@ -567,7 +632,22 @@ p { margin: 0 0 var(--sp-3); }
   border: 1px solid var(--color-border);
 }
 
+.cart-item__info { min-width: 0; }
 .cart-item__info strong { display: block; margin-bottom: 2px; }
+.cart-item__variant {
+  font-size: var(--fs-xs);
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 340px;
+}
+.cart-item__price-unit {
+  font-size: var(--fs-xs);
+  margin-top: 2px;
+  color: var(--color-text-muted);
+}
 
 .cart-item__actions {
   display: flex;
@@ -655,7 +735,7 @@ p { margin: 0 0 var(--sp-3); }
 .site-footer .logo { font-size: var(--fs-lg); }
 
 /* =========================================================
-   15. АДМИНКА — картонная тема
+   15. АДМИНКА
    ========================================================= */
 .admin-body {
   display: grid;
@@ -883,8 +963,16 @@ p { margin: 0 0 var(--sp-3); }
 .table tbody tr:hover { background: var(--color-card-body); }
 .table tbody tr:last-child td { border-bottom: none; }
 
-.table-actions { display: flex; gap: var(--sp-1); }
+/* Кнопки действий в таблице — inline, чтобы td оставался table-cell */
+.table-actions {
+  white-space: nowrap;
+  vertical-align: middle;
+}
 .table-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
   padding: 6px 10px;
   font-size: var(--fs-sm);
   border-radius: var(--radius-sm);
@@ -893,11 +981,19 @@ p { margin: 0 0 var(--sp-3); }
   background: var(--color-card-body);
   color: var(--color-text);
   border: 1px solid var(--color-border);
+  margin-right: var(--sp-1);
 }
+.table-actions .btn:last-child { margin-right: 0; }
 .table-actions .btn:hover {
   background: var(--color-primary-soft);
   color: var(--color-primary-hover);
   border-color: var(--color-primary);
+}
+
+/* ---------- 15.1. Таблица заказов: закругления только слева ---------- */
+[data-orders-table] .select,
+[data-orders-table] .table-actions .btn {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
 
 /* ---------- 16. Модалки ---------- */
@@ -939,6 +1035,12 @@ p { margin: 0 0 var(--sp-3); }
   height: 4px;
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Модалка редактирования позиции в корзине — тёплая бумага */
+.modal[data-edit-modal] .modal__content,
+[data-edit-modal] .modal__content {
+  background: var(--color-paper);
 }
 
 .modal__header {
@@ -1187,7 +1289,450 @@ p { margin: 0 0 var(--sp-3); }
   max-height: 100%;
 }
 
-/* ---------- 24. Адаптивность ---------- */
+/* ---------- 24. Dropzone (загрузка изображений) ---------- */
+.dropzone {
+  position: relative;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card-body);
+  padding: var(--sp-4);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  text-align: center;
+}
+.dropzone:hover,
+.dropzone--over {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.dropzone__hint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  align-items: center;
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+}
+.dropzone__hint u { color: var(--color-primary); text-decoration: underline; cursor: pointer; }
+.dropzone__icon { font-size: 2rem; line-height: 1; }
+.dropzone__preview {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+}
+.dropzone__preview img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.dropzone__clear {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(28, 43, 34, 0.7);
+  color: #fff;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.dropzone__clear:hover { background: var(--color-error); }
+
+/* ---------- 25. Редактор размеров ---------- */
+.sizes-editor {
+  display: grid;
+  gap: var(--sp-2);
+}
+.size-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--color-card-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.size-row:hover { border-color: var(--color-highlight); }
+.size-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.size-row input[type="number"] {
+  padding: 8px 12px;
+}
+
+/* ---------- 26. Выбор размера ---------- */
+.size-picker {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  flex-wrap: wrap;
+}
+.size-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--color-card-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.size-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.size-chip--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.size-picker--lg .size-chip {
+  min-width: 80px;
+  height: 38px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+/* ---------- 27. Топпинги ---------- */
+.topping-list {
+  display: grid;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.topping-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--color-card-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.topping-item:hover { border-color: var(--color-highlight); }
+.topping-item__name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.topping-item__season {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.topping-item__price {
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+/* ---------- 28. Итого на странице товара ---------- */
+.product-detail__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  margin-top: var(--sp-4);
+  border-top: 1px solid var(--color-border);
+}
+.product-detail__total .price { font-size: var(--fs-2xl); }
+
+/* ---------- 29. Checkout ---------- */
+.checkout-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+.checkout-layout .panel {
+  background: var(--color-paper);
+}
+
+.checkout-item {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.checkout-item:last-child { border-bottom: none; }
+.checkout-item__img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+}
+.checkout-item__info strong { display: block; }
+
+.payment-options {
+  display: grid;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.payment-option {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--color-primary-hover);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition),
+              border-color var(--transition), box-shadow var(--transition);
+}
+.payment-option:hover {
+  background: var(--color-primary-hover);
+  color: #fff;
+}
+.payment-option input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+  transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+.payment-option:has(input:checked) {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: transparent;
+  box-shadow:
+    0 0 0 3px rgba(45, 106, 79, 0.35),
+    0 4px 16px rgba(45, 106, 79, 0.4);
+}
+.payment-option:has(input:checked):hover {
+  background: var(--color-primary);
+  box-shadow:
+    0 0 0 3px rgba(45, 106, 79, 0.5),
+    0 6px 22px rgba(45, 106, 79, 0.5);
+}
+.payment-option input[type="radio"]:checked {
+  background: #fff;
+  border-color: #fff;
+  box-shadow: inset 0 0 0 3px var(--color-primary);
+}
+.payment-option__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.payment-option__body strong { font-size: var(--fs-sm); color: inherit; }
+.payment-option__body .text-muted {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+@media (max-width: 900px) {
+  .checkout-layout { grid-template-columns: 1fr; }
+}
+
+/* ---------- 30. Чек — тёплая бумага ---------- */
+.receipt {
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  margin: 0 auto;
+  position: relative;
+}
+.receipt__header {
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+  background: var(--color-paper);
+  border-bottom: 2px dashed var(--color-border);
+  text-align: center;
+  position: relative;
+}
+.receipt__header::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -8px;
+  height: 16px;
+  background-image: radial-gradient(circle at 8px 8px, var(--color-bg) 8px, transparent 9px);
+  background-size: 16px 16px;
+  background-repeat: repeat-x;
+}
+.receipt__brand {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--fs-xl);
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+}
+.receipt__address {
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  margin-top: var(--sp-1);
+}
+.receipt__meta {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--sp-2);
+  font-variant-numeric: tabular-nums;
+}
+.receipt__status-row {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: var(--sp-4) var(--sp-5) var(--sp-3);
+}
+.receipt__table {
+  width: 100%;
+  border-collapse: collapse;
+  padding: 0 var(--sp-5);
+}
+.receipt__table th,
+.receipt__table td {
+  padding: var(--sp-3) var(--sp-5);
+  text-align: left;
+  font-size: var(--fs-sm);
+  border-bottom: 1px dashed var(--color-border);
+}
+.receipt__table thead th {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.receipt-item__name { font-weight: 600; }
+.receipt-item__variant {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.receipt-item__qty,
+.receipt-item__sum {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.receipt__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 2px dashed var(--color-border);
+  background: var(--color-card-body);
+  font-family: var(--font-heading);
+}
+.receipt__total span { font-size: var(--fs-lg); }
+.receipt__total strong { font-size: var(--fs-2xl); color: var(--color-primary); }
+.receipt__footer {
+  padding: var(--sp-4) var(--sp-5);
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+.receipt__footer p { margin: 0 0 4px; }
+.receipt__actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: center;
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+  flex-wrap: wrap;
+}
+
+/* ---------- 31. Профиль: карточки заказов (кремовые) ---------- */
+.order-card {
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-3);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.order-card:hover {
+  border-color: var(--color-highlight);
+  box-shadow: var(--shadow-md);
+}
+.order-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.order-card__items {
+  padding: var(--sp-3) 0;
+  list-style: none;
+  margin: 0;
+  display: grid;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+}
+.order-card__items li { color: var(--color-text); }
+.order-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+/* ---------- 32. Печать чека ---------- */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+  body::before { display: none; }
+  .site-header, .site-footer { display: none !important; }
+  .receipt {
+    box-shadow: none;
+    border: 1px solid #999;
+  }
+  .receipt__actions { display: none; }
+  main.section { padding: 0; }
+  .container { max-width: 100%; padding: 0; }
+}
+
+/* ---------- 33. Адаптивность ---------- */
 @media (max-width: 1000px) {
   .hero__inner { grid-template-columns: 1fr; }
   .hero__media { order: -1; }
@@ -1299,464 +1844,4 @@ p { margin: 0 0 var(--sp-3); }
 @media (max-width: 420px) {
   .admin-kpis { grid-template-columns: 1fr; }
   .logo { font-size: var(--fs-lg); }
-}
-
-/* ---------- 25. Dropzone (загрузка изображений) ---------- */
-.dropzone {
-  position: relative;
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-card-body);
-  padding: var(--sp-4);
-  cursor: pointer;
-  transition: border-color var(--transition), background var(--transition);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 140px;
-  text-align: center;
-}
-.dropzone:hover,
-.dropzone--over {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
-}
-.dropzone__hint {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  align-items: center;
-  color: var(--color-text-muted);
-  font-size: var(--fs-sm);
-}
-.dropzone__hint u { color: var(--color-primary); text-decoration: underline; cursor: pointer; }
-.dropzone__icon { font-size: 2rem; line-height: 1; }
-.dropzone__preview {
-  position: relative;
-  width: 100%;
-  max-width: 300px;
-}
-.dropzone__preview img {
-  width: 100%;
-  height: auto;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-}
-.dropzone__clear {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(28, 43, 34, 0.7);
-  color: #fff;
-  font-size: 1rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background var(--transition);
-}
-.dropzone__clear:hover { background: var(--color-error); }
-
-/* ---------- 26. Редактор размеров ---------- */
-.sizes-editor {
-  display: grid;
-  gap: var(--sp-2);
-}
-.size-row {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  gap: var(--sp-3);
-  align-items: center;
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--color-card-body);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: border-color var(--transition), background var(--transition);
-}
-.size-row:hover { border-color: var(--color-highlight); }
-.size-row input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-primary);
-  cursor: pointer;
-}
-.size-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-  padding: 0 8px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-weight: 700;
-  color: var(--color-primary);
-}
-.size-row input[type="number"] {
-  padding: 8px 12px;
-}
-/* ---------- 27. Выбор размера ---------- */
-.size-picker {
-  display: flex;
-  gap: var(--sp-2);
-  margin-top: var(--sp-2);
-  flex-wrap: wrap;
-}
-.size-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  height: 32px;
-  padding: 0 10px;
-  background: var(--color-card-body);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-weight: 700;
-  font-size: var(--fs-sm);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), color var(--transition);
-}
-.size-chip:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-.size-chip--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
-}
-.size-picker--lg .size-chip {
-  min-width: 80px;
-  height: 38px;
-  font-size: var(--fs-sm);
-  font-weight: 500;
-}
-
-/* ---------- 28. Сезонный бейдж на карточке и товаре ---------- */
-.product-card__season {
-  position: absolute;
-  top: var(--sp-2);
-  left: var(--sp-2);
-  background: var(--color-accent);
-  color: #fff;
-  text-transform: uppercase;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(181, 101, 29, 0.4);
-}
-.product-card__media { position: relative; }
-.product-detail__media { position: relative; }
-.product-detail__season {
-  position: absolute;
-  top: var(--sp-3);
-  left: var(--sp-3);
-  background: var(--color-accent);
-  color: #fff;
-  font-weight: 700;
-}
-
-/* ---------- 29. Топпинги на странице товара ---------- */
-.topping-list {
-  display: grid;
-  gap: var(--sp-2);
-  margin-top: var(--sp-2);
-}
-.topping-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--color-card-body);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: border-color var(--transition), background var(--transition);
-}
-.topping-item:hover { border-color: var(--color-highlight); }
-.topping-item input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-primary);
-}
-.topping-item__name {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font-size: var(--fs-sm);
-}
-.topping-item__season {
-  font-size: 10px;
-  padding: 2px 6px;
-}
-.topping-item__price {
-  font-weight: 600;
-  color: var(--color-primary);
-  white-space: nowrap;
-}
-
-/* ---------- 30. Итого на странице товара ---------- */
-.product-detail__total {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  padding: var(--sp-3) 0;
-  margin-top: var(--sp-4);
-  border-top: 1px solid var(--color-border);
-}
-.product-detail__total .price { font-size: var(--fs-2xl); }
-
-/* ---------- 31. Позиция в корзине: варианты ---------- */
-.cart-item__info { min-width: 0; }
-.cart-item__variant {
-  font-size: var(--fs-xs);
-  margin-top: 2px;
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 340px;
-}
-.cart-item__price-unit {
-  font-size: var(--fs-xs);
-  margin-top: 2px;
-  color: var(--color-text-muted);
-}
-
-/* ---------- 32. Checkout ---------- */
-.checkout-layout {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: var(--sp-5);
-  align-items: start;
-}
-
-.checkout-item {
-  display: grid;
-  grid-template-columns: 56px 1fr auto;
-  gap: var(--sp-3);
-  align-items: center;
-  padding: var(--sp-3) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-.checkout-item:last-child { border-bottom: none; }
-.checkout-item__img {
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-}
-.checkout-item__info strong { display: block; }
-
-.payment-options {
-  display: grid;
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-4);
-}
-.payment-option {
-  display: flex;
-  gap: var(--sp-3);
-  align-items: flex-start;
-  padding: var(--sp-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: border-color var(--transition), background var(--transition);
-}
-.payment-option:hover { border-color: var(--color-highlight); }
-.payment-option input[type="radio"] {
-  margin-top: 4px;
-  accent-color: var(--color-primary);
-  width: 18px;
-  height: 18px;
-}
-.payment-option:has(input:checked) {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
-}
-.payment-option__body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.payment-option__body strong { font-size: var(--fs-sm); }
-.payment-option__body .text-muted { font-size: var(--fs-xs); }
-
-@media (max-width: 900px) {
-  .checkout-layout { grid-template-columns: 1fr; }
-}
-
-/* ---------- 33. Чек ---------- */
-.receipt {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  margin: 0 auto;
-}
-.receipt__header {
-  padding: var(--sp-5) var(--sp-5) var(--sp-4);
-  background: var(--color-card-body);
-  border-bottom: 2px dashed var(--color-border);
-  text-align: center;
-  position: relative;
-}
-/* Зубчатый край как у настоящего чека */
-.receipt__header::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: -8px;
-  height: 16px;
-  background-image: radial-gradient(circle at 8px 8px, var(--color-surface) 8px, transparent 9px);
-  background-size: 16px 16px;
-  background-repeat: repeat-x;
-}
-.receipt__brand {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: var(--fs-xl);
-  color: var(--color-primary);
-  letter-spacing: 0.02em;
-}
-.receipt__address {
-  font-size: var(--fs-sm);
-  color: var(--color-text);
-  margin-top: var(--sp-1);
-}
-.receipt__meta {
-  font-size: var(--fs-xs);
-  color: var(--color-text-muted);
-  margin-top: var(--sp-2);
-  font-variant-numeric: tabular-nums;
-}
-.receipt__status-row {
-  display: flex;
-  gap: var(--sp-2);
-  justify-content: center;
-  flex-wrap: wrap;
-  padding: var(--sp-4) var(--sp-5) var(--sp-3);
-}
-.receipt__table {
-  width: 100%;
-  border-collapse: collapse;
-  padding: 0 var(--sp-5);
-}
-.receipt__table th,
-.receipt__table td {
-  padding: var(--sp-3) var(--sp-5);
-  text-align: left;
-  font-size: var(--fs-sm);
-  border-bottom: 1px dashed var(--color-border);
-}
-.receipt__table thead th {
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  font-weight: 600;
-}
-.receipt-item__name { font-weight: 600; }
-.receipt-item__variant {
-  font-size: var(--fs-xs);
-  color: var(--color-text-muted);
-  margin-top: 2px;
-}
-.receipt-item__qty,
-.receipt-item__sum {
-  text-align: right;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.receipt__total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--sp-4) var(--sp-5);
-  border-top: 2px dashed var(--color-border);
-  background: var(--color-card-body);
-  font-family: var(--font-heading);
-}
-.receipt__total span { font-size: var(--fs-lg); }
-.receipt__total strong { font-size: var(--fs-2xl); color: var(--color-primary); }
-.receipt__footer {
-  padding: var(--sp-4) var(--sp-5);
-  text-align: center;
-  font-size: var(--fs-sm);
-}
-.receipt__footer p { margin: 0 0 4px; }
-.receipt__actions {
-  display: flex;
-  gap: var(--sp-2);
-  justify-content: center;
-  padding: var(--sp-4) var(--sp-5) var(--sp-5);
-  flex-wrap: wrap;
-}
-
-/* ---------- 34. Профиль: карточки заказов ---------- */
-.order-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--sp-4);
-  margin-bottom: var(--sp-3);
-  transition: border-color var(--transition), box-shadow var(--transition);
-}
-.order-card:hover {
-  border-color: var(--color-highlight);
-  box-shadow: var(--shadow-md);
-}
-.order-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--sp-3);
-  padding-bottom: var(--sp-3);
-  border-bottom: 1px solid var(--color-border);
-  flex-wrap: wrap;
-}
-.order-card__items {
-  padding: var(--sp-3) 0;
-  list-style: none;
-  margin: 0;
-  display: grid;
-  gap: var(--sp-1);
-  font-size: var(--fs-sm);
-}
-.order-card__items li {
-  color: var(--color-text);
-}
-.order-card__footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--sp-3);
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--color-border);
-  flex-wrap: wrap;
-}
-
-/* ---------- 35. Печать чека ---------- */
-@media print {
-  .no-print { display: none !important; }
-  body { background: #fff; }
-  body::before { display: none; }
-  .site-header, .site-footer { display: none !important; }
-  .receipt {
-    box-shadow: none;
-    border: 1px solid #999;
-  }
-  .receipt__actions { display: none; }
-  main.section { padding: 0; }
-  .container { max-width: 100%; padding: 0; }
 }
