@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — MyCoffeCup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a href="/index.html" class="logo">My<span>Coffe</span>Cup</a>
+      <nav class="nav" aria-label="Основная навигация">
+        <a href="/index.html">Каталог</a>
+        <a href="/blog.html">Блог</a>
+        <a href="/#about">О нас</a>
+        <a href="/#contacts">Контакты</a>
+      </nav>
+      <div class="header-actions">
+        <a href="/cart.html" class="btn btn--ghost" aria-label="Корзина">
+          🛒 <span class="cart-count badge badge--new" data-cart-count>0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container" style="max-width: 480px;">
+      <h1 class="text-center">Добро пожаловать</h1>
+      <p class="text-muted text-center">Войдите или создайте аккаунт, чтобы отслеживать заказы</p>
+
+      <!-- Табы -->
+      <div class="row" role="tablist" style="justify-content: center; margin-bottom: var(--sp-5);">
+        <button class="btn btn--primary" role="tab" aria-selected="true" data-tab="login">Вход</button>
+        <button class="btn btn--secondary" role="tab" aria-selected="false" data-tab="register">Регистрация</button>
+      </div>
+
+      <!-- Форма входа -->
+      <form class="form" data-form="login">
+        <div class="field">
+          <label class="field__label" for="login-email">Email</label>
+          <input class="input" type="email" id="login-email" name="email" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label class="field__label" for="login-password">Пароль</label>
+          <input class="input" type="password" id="login-password" name="password" required autocomplete="current-password">
+        </div>
+        <p class="field__error" data-error hidden></p>
+        <button class="btn btn--primary btn--block" type="submit">Войти</button>
+      </form>
+
+      <!-- Форма регистрации -->
+      <form class="form" data-form="register" hidden>
+        <div class="field">
+          <label class="field__label" for="reg-name">Имя</label>
+          <input class="input" type="text" id="reg-name" name="name" required autocomplete="name">
+        </div>
+        <div class="field">
+          <label class="field__label" for="reg-email">Email</label>
+          <input class="input" type="email" id="reg-email" name="email" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label class="field__label" for="reg-password">Пароль</label>
+          <input class="input" type="password" id="reg-password" name="password" required minlength="6" autocomplete="new-password">
+          <span class="field__hint">Минимум 6 символов</span>
+        </div>
+        <p class="field__error" data-error hidden></p>
+        <button class="btn btn--primary btn--block" type="submit">Зарегистрироваться</button>
+      </form>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container text-muted" style="padding: var(--sp-5) 0;">
+      © <span data-current-year></span> MyCoffeCup
+    </div>
+  </footer>
+
+  <script src="/js/header.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+</body>
+</html>

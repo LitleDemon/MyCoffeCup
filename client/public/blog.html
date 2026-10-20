@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Блог — MyCoffeCup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a href="/index.html" class="logo">My<span>Coffe</span>Cup</a>
+      <nav class="nav" aria-label="Основная навигация">
+        <a href="/index.html">Каталог</a>
+        <a href="/blog.html" aria-current="page">Блог</a>
+        <a href="/#about">О нас</a>
+        <a href="/#contacts">Контакты</a>
+      </nav>
+      <div class="header-actions">
+        <a href="/cart.html" class="btn btn--ghost" aria-label="Корзина">
+          🛒 <span class="cart-count badge badge--new" data-cart-count>0</span>
+        </a>
+        <a href="/login.html" class="btn btn--secondary" data-auth-link>Войти</a>
+        <button class="btn btn--ghost burger" aria-label="Меню" data-burger>☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container">
+      <h1>Журнал</h1>
+      <p class="text-muted" style="max-width: 640px;">
+        Истории о сортах, рецептах и людях за стойкой. Никаких пресс-релизов —
+        только то, что нам самим интересно.
+      </p>
+
+      <div class="blog-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--sp-5); margin-top: var(--sp-5);" data-blog-list>
+        <!-- Статьи рендерит blog.js -->
+        <p class="text-muted">Загрузка статей…</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container text-muted" style="padding: var(--sp-5) 0;">
+      © <span data-current-year></span> MyCoffeCup
+    </div>
+  </footer>
+
+  <script src="/js/header.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/blog.js"></script>
+</body>
+</html>

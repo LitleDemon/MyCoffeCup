@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админка — Статистика</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="admin-body">
+
+  <aside class="admin-sidebar">
+    <a href="/index.html" class="logo">My<span>Coffe</span>Cup</a>
+    <nav class="admin-nav">
+      <a href="/admin/dashboard.html" aria-current="page">📊 Статистика</a>
+      <a href="/admin/products.html">☕ Товары</a>
+      <a href="/admin/content.html">📝 Контент</a>
+      <a href="/admin/orders.html">🧾 Заказы</a>
+      <a href="/index.html">← На сайт</a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1>Статистика и аналитика</h1>
+      <span class="text-muted" data-admin-email></span>
+    </header>
+
+    <!-- KPI-карточки -->
+    <section class="admin-kpis">
+      <div class="kpi">
+        <span class="kpi__label">Выручка за месяц</span>
+        <strong class="kpi__value" data-kpi-revenue>—</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Заказов</span>
+        <strong class="kpi__value" data-kpi-orders>—</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Средний чек</span>
+        <strong class="kpi__value" data-kpi-avg>—</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Новых клиентов</span>
+        <strong class="kpi__value" data-kpi-users>—</strong>
+      </div>
+    </section>
+
+    <!-- Графики -->
+    <section class="admin-panels">
+      <div class="panel">
+        <h3>Продажи по дням</h3>
+        <canvas id="chart-sales" height="260"></canvas>
+      </div>
+      <div class="panel">
+        <h3>Топ товаров</h3>
+        <canvas id="chart-top-products" height="260"></canvas>
+      </div>
+    </section>
+
+    <!-- Таблица последних заказов -->
+    <section class="panel">
+      <h3>Последние заказы</h3>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Клиент</th>
+              <th>Сумма</th>
+              <th>Статус</th>
+              <th>Дата</th>
+            </tr>
+          </thead>
+          <tbody data-admin-recent-orders>
+            <tr><td colspan="5" class="text-muted">Загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin-dashboard.js"></script>
+</body>
+</html>

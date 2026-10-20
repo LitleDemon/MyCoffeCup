@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyCoffeCup — кофе с собой и не только</title>
+  <meta name="description" content="Свежеобжаренный кофе, десерты и атмосфера уюта. Закажите онлайн с доставкой.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ========== ШАПКА ========== -->
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a href="/index.html" class="logo">My<span>Coffe</span>Cup</a>
+
+      <nav class="nav" aria-label="Основная навигация">
+        <a href="/index.html" aria-current="page">Каталог</a>
+        <a href="/blog.html">Блог</a>
+        <a href="/#about">О нас</a>
+        <a href="/#contacts">Контакты</a>
+      </nav>
+
+      <div class="header-actions">
+        <a href="/cart.html" class="btn btn--ghost" aria-label="Корзина">
+          🛒 <span class="cart-count badge badge--new" data-cart-count>0</span>
+        </a>
+        <a href="/login.html" class="btn btn--secondary" data-auth-link>Войти</a>
+        <button class="btn btn--ghost burger" aria-label="Меню" data-burger>☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ========== HERO ========== -->
+    <section class="hero">
+      <div class="container hero__inner">
+        <div class="hero__content">
+          <span class="badge badge--accent">Свежая обжарка каждую неделю</span>
+          <h1>Кофе, который<br>хочется пить медленно</h1>
+          <p class="text-muted">
+            Отборные зёрна, честные рецепты и уютная атмосфера.
+            Закажите онлайн — заберёте без очереди.
+          </p>
+          <div class="row">
+            <a href="#catalog" class="btn btn--primary">Смотреть каталог</a>
+            <a href="/blog.html" class="btn btn--ghost">Читать блог</a>
+          </div>
+        </div>
+        <div class="hero__media">
+          <img src="/images/hero.jpg" alt="Чашка кофе на деревянном столе">
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== КАТАЛОГ ========== -->
+    <section class="section" id="catalog">
+      <div class="container">
+        <div class="row row--between" style="margin-bottom: var(--sp-5); flex-wrap: wrap;">
+          <h2>Наш кофе и десерты</h2>
+          <div class="row">
+            <input type="search" class="input" placeholder="Поиск по каталогу" data-search>
+            <select class="select" data-category-filter>
+              <option value="">Все категории</option>
+              <option value="coffee">Кофе</option>
+              <option value="tea">Чай</option>
+              <option value="dessert">Десерты</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="product-grid" data-products>
+          <!-- Карточки товаров рендерит catalog.js -->
+          <p class="text-muted">Загрузка товаров…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== О НАС ========== -->
+    <section class="section" id="about">
+      <div class="container">
+        <h2>О нас</h2>
+        <p class="text-muted" style="max-width: 640px;">
+          Мы — небольшая кофейня, которая верит: хороший кофе начинается с уважения
+          к фермеру, обжарщику и бариста. Работаем с микролотами, обжариваем небольшими
+          партиями и варим так, чтобы вам захотелось вернуться.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========== ФУТЕР ========== -->
+  <footer class="site-footer" id="contacts">
+    <div class="container site-footer__inner">
+      <div>
+        <a href="/index.html" class="logo">My<span>Coffe</span>Cup</a>
+        <p class="text-muted" style="margin-top: var(--sp-2);">Кофе с характером с 2024 года</p>
+      </div>
+      <div>
+        <h4>Контакты</h4>
+        <p class="text-muted">Москва, ул. Кофейная, 12<br>Ежедневно 8:00–22:00</p>
+      </div>
+      <div>
+        <h4>Навигация</h4>
+        <ul class="stack">
+          <li><a href="/index.html">Каталог</a></li>
+          <li><a href="/blog.html">Блог</a></li>
+          <li><a href="/login.html">Войти</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container text-muted" style="padding-top: var(--sp-4); border-top: 1px solid var(--color-border); margin-top: var(--sp-5);">
+      © <span data-current-year></span> MyCoffeCup. Все права защищены.
+    </div>
+  </footer>
+
+  <script src="/js/header.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/catalog.js"></script>
+</body>
+</html>

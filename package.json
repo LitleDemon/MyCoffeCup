@@ -1,0 +1,28 @@
+{
+  "name": "mycoffecup",
+  "version": "1.0.0",
+  "description": "Coffee shop web app (Node.js + Express + MySQL)",
+  "main": "server/app.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "node server/app.js",
+    "dev": "node --watch server/app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LitleDemon/MyCoffeCup.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/LitleDemon/MyCoffeCup/issues"
+  },
+  "homepage": "https://github.com/LitleDemon/MyCoffeCup#readme",
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}
