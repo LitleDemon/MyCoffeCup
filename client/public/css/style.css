@@ -1529,3 +1529,234 @@ p { margin: 0 0 var(--sp-3); }
   margin-top: 2px;
   color: var(--color-text-muted);
 }
+
+/* ---------- 32. Checkout ---------- */
+.checkout-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+.checkout-item {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.checkout-item:last-child { border-bottom: none; }
+.checkout-item__img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+}
+.checkout-item__info strong { display: block; }
+
+.payment-options {
+  display: grid;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.payment-option {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  padding: var(--sp-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.payment-option:hover { border-color: var(--color-highlight); }
+.payment-option input[type="radio"] {
+  margin-top: 4px;
+  accent-color: var(--color-primary);
+  width: 18px;
+  height: 18px;
+}
+.payment-option:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.payment-option__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.payment-option__body strong { font-size: var(--fs-sm); }
+.payment-option__body .text-muted { font-size: var(--fs-xs); }
+
+@media (max-width: 900px) {
+  .checkout-layout { grid-template-columns: 1fr; }
+}
+
+/* ---------- 33. Чек ---------- */
+.receipt {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  margin: 0 auto;
+}
+.receipt__header {
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+  background: var(--color-card-body);
+  border-bottom: 2px dashed var(--color-border);
+  text-align: center;
+  position: relative;
+}
+/* Зубчатый край как у настоящего чека */
+.receipt__header::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -8px;
+  height: 16px;
+  background-image: radial-gradient(circle at 8px 8px, var(--color-surface) 8px, transparent 9px);
+  background-size: 16px 16px;
+  background-repeat: repeat-x;
+}
+.receipt__brand {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--fs-xl);
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+}
+.receipt__address {
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  margin-top: var(--sp-1);
+}
+.receipt__meta {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--sp-2);
+  font-variant-numeric: tabular-nums;
+}
+.receipt__status-row {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: var(--sp-4) var(--sp-5) var(--sp-3);
+}
+.receipt__table {
+  width: 100%;
+  border-collapse: collapse;
+  padding: 0 var(--sp-5);
+}
+.receipt__table th,
+.receipt__table td {
+  padding: var(--sp-3) var(--sp-5);
+  text-align: left;
+  font-size: var(--fs-sm);
+  border-bottom: 1px dashed var(--color-border);
+}
+.receipt__table thead th {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.receipt-item__name { font-weight: 600; }
+.receipt-item__variant {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.receipt-item__qty,
+.receipt-item__sum {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.receipt__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 2px dashed var(--color-border);
+  background: var(--color-card-body);
+  font-family: var(--font-heading);
+}
+.receipt__total span { font-size: var(--fs-lg); }
+.receipt__total strong { font-size: var(--fs-2xl); color: var(--color-primary); }
+.receipt__footer {
+  padding: var(--sp-4) var(--sp-5);
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+.receipt__footer p { margin: 0 0 4px; }
+.receipt__actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: center;
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+  flex-wrap: wrap;
+}
+
+/* ---------- 34. Профиль: карточки заказов ---------- */
+.order-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-3);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.order-card:hover {
+  border-color: var(--color-highlight);
+  box-shadow: var(--shadow-md);
+}
+.order-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.order-card__items {
+  padding: var(--sp-3) 0;
+  list-style: none;
+  margin: 0;
+  display: grid;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+}
+.order-card__items li {
+  color: var(--color-text);
+}
+.order-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+/* ---------- 35. Печать чека ---------- */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+  body::before { display: none; }
+  .site-header, .site-footer { display: none !important; }
+  .receipt {
+    box-shadow: none;
+    border: 1px solid #999;
+  }
+  .receipt__actions { display: none; }
+  main.section { padding: 0; }
+  .container { max-width: 100%; padding: 0; }
+}

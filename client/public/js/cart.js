@@ -4,7 +4,8 @@
  * Позиция = product_id + размер + набор топпингов (ключ).
  * Экспорт: window.Cart = { get, add, remove, updateQty, updateItem, clear, getTotal }.
  *
- * Оформление: POST /api/orders с items[{product_id, qty, size_code, topping_ids}].
+ * Кнопка «Оформить заказ» ведёт на /checkout.html —
+ * сам заказ отправляется уже там (checkout.js).
  */
 
 (function () {
@@ -37,21 +38,17 @@
     return base + (toppings || []).reduce((s, t) => s + Number(t.price || 0), 0);
   }
 
-  function calcPriceFromItem(item, sizeCode, toppings) {
-    let base = Number(item.basePrice || item.price);
-    if (Array.isArray(item.product_sizes) && item.product_sizes.length) {
-      const found = item.product_sizes.find((s) => s.code === sizeCode);
-      base = found ? Number(found.price) : Number(item.product_sizes[0].price);
-    }
-    return base + (toppings || []).reduce((s, t) => s + Number(t.price || 0), 0);
-  }
-
   function basePriceFromItem(item, sizeCode) {
     if (Array.isArray(item.product_sizes) && item.product_sizes.length) {
       const found = item.product_sizes.find((s) => s.code === sizeCode);
       return found ? Number(found.price) : Number(item.product_sizes[0].price);
     }
     return Number(item.basePrice || item.price);
+  }
+
+  function calcPriceFromItem(item, sizeCode, toppings) {
+    const base = basePriceFromItem(item, sizeCode);
+    return base + (toppings || []).reduce((s, t) => s + Number(t.price || 0), 0);
   }
 
   /* ---------- Операции ---------- */
@@ -255,7 +252,7 @@
       }
     });
 
-    /* Ручной ввод qty — мгновенный пересчёт без перерисовки */
+    /* Ручной ввод qty — мгновенный пересчёт без полной перерисовки */
     container.addEventListener('input', (e) => {
       const input = e.target.closest('[data-cart-qty]');
       if (!input) return;
@@ -299,8 +296,17 @@
     });
 
     document.querySelectorAll('[data-checkout]').forEach((btn) => {
-      btn.addEventListener('click', checkout);
+      btn.addEventListener('click', goToCheckout);
     });
+  }
+
+  /* ---------- Переход на оформление ---------- */
+  function goToCheckout() {
+    if (!getCart().length) {
+      window.showToast?.('Корзина пуста');
+      return;
+    }
+    location.href = '/checkout.html';
   }
 
   /* ---------- Редактор позиции ---------- */
@@ -439,48 +445,6 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !modal.hidden) closeEditor();
     });
-  }
-
-  /* ---------- Оформление ---------- */
-  async function checkout() {
-    const items = getCart();
-    if (!items.length) {
-      window.showToast?.('Корзина пуста');
-      return;
-    }
-
-    const total = getTotal().sum;
-    const stickers = window.getOrderStickers?.() || [];
-    const order = {
-      items: items.map((i) => ({
-        product_id: i.product_id,
-        qty: i.qty,
-        size_code: i.size || null,
-        topping_ids: (i.toppings || []).map((t) => t.id),
-      })),
-      stickers,
-      payment_method: 'onsite', // временно; в Фазе 5 — выбор на странице checkout
-    };
-
-    try {
-      const created = await window.api.post('/orders', order);
-      clear();
-      window.clearOrderStickers?.();
-      window.showToast?.(`Заказ #${created.id} оформлен!`);
-      setTimeout(() => (location.href = '/'), 900);
-    } catch (err) {
-      if (!err.isNetworkError) {
-        window.showToast?.(err.message || 'Не удалось оформить заказ');
-        return;
-      }
-      localStorage.setItem('last_order', JSON.stringify({
-        ...order, total, created_at: new Date().toISOString(),
-      }));
-      clear();
-      window.clearOrderStickers?.();
-      window.showToast?.('Заказ сохранён локально');
-      setTimeout(() => (location.href = '/'), 1200);
-    }
   }
 
   /* ---------- Старт ---------- */
