@@ -8,6 +8,8 @@ const authRoutes    = require('./routes/authRoutes');
 const orderRoutes   = require('./routes/orderRoutes');
 const adminRoutes   = require('./routes/adminRoutes');
 const blogRoutes = require('./routes/blogRoutes');
+const toppingRoutes = require('./routes/toppingRoutes');
+const uploadRoutes  = require('./routes/uploadRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +32,9 @@ app.use('/api/auth',     authRoutes);
 app.use('/api/orders',   orderRoutes);
 app.use('/api/admin',    adminRoutes);
 app.use('/api/posts', blogRoutes);
+app.use('/api/toppings', toppingRoutes);
+app.use('/api/upload',   uploadRoutes);
+
 
 
 /* ---------- 404 для API ---------- */
