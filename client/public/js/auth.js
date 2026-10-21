@@ -10,10 +10,7 @@
  * user@coffee.ru / user123.
  */
 
-const MOCK_USERS = [
-  { id: 1, name: 'Администратор', email: 'admin@coffee.ru', password: 'admin123', role: 'admin' },
-  { id: 2, name: 'Степан',        email: 'user@coffee.ru',  password: 'user123',  role: 'user'  },
-];
+const MOCK_USERS = [];
 
 (function () {
   function getUsers() {
