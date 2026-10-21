@@ -478,16 +478,6 @@
     }
   }
 
-  async function loadProductsAdmin() {
-    try {
-      const data = await window.api.get('/products');
-      return Array.isArray(data) ? data : (data.products || []);
-    } catch (err) {
-      console.warn('Не удалось загрузить товары:', err.message);
-      return [];
-    }
-  }
-
   /* --- Drag&drop загрузки изображения --- */
 
   function setupImageDropzone(form) {
