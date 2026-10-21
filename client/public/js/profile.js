@@ -31,6 +31,7 @@
     const itemsPreview = items.slice(0, 3).map((it) => {
       const opts = it.options || {};
       const parts = [it.name];
+      if (opts.iced) parts.push('🧊');
       if (opts.size) parts.push(opts.size);
       if (Array.isArray(opts.toppings) && opts.toppings.length) {
         parts.push('+' + opts.toppings.map((t) => t.name).join(', +'));

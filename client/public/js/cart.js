@@ -1,18 +1,12 @@
 /**
  * cart.js — корзина на localStorage.
- *
- * Позиция = product_id + размер + набор топпингов (ключ).
- * Экспорт: window.Cart = { get, add, remove, updateQty, updateItem, clear, getTotal }.
- *
- * Кнопка «Оформить заказ» ведёт на /checkout.html —
- * сам заказ отправляется уже там (checkout.js).
+ * Ключ позиции: product_id + размер + топпинги + iced.
  */
 
 (function () {
   const CART_KEY = 'cart';
   let cachedToppings = null;
 
-  /* ---------- Storage ---------- */
   function getCart() {
     try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); }
     catch { return []; }
@@ -23,10 +17,9 @@
     window.dispatchEvent(new Event('cart:updated'));
   }
 
-  /* ---------- Helpers ---------- */
-  function buildKey(productId, sizeCode, toppingIds) {
+  function buildKey(productId, sizeCode, toppingIds, iced) {
     const t = (toppingIds || []).map(Number).sort((a, b) => a - b).join('-');
-    return `${productId}_${sizeCode || ''}_${t}`;
+    return `${productId}_${sizeCode || ''}_${t}_${iced ? 'i' : 'h'}`;
   }
 
   function calcUnitPrice(product, sizeCode, toppings) {
@@ -51,16 +44,17 @@
     return base + (toppings || []).reduce((s, t) => s + Number(t.price || 0), 0);
   }
 
-  /* ---------- Операции ---------- */
   function add(product, optionsOrQty = {}, maybeQty = 1) {
     let opts, qty;
-    if (typeof optionsOrQty === 'number') { opts = { size: null, toppings: [] }; qty = optionsOrQty; }
-    else { opts = optionsOrQty || { size: null, toppings: [] }; qty = maybeQty; }
+    if (typeof optionsOrQty === 'number') { opts = {}; qty = optionsOrQty; }
+    else { opts = optionsOrQty || {}; qty = maybeQty; }
 
     const size = opts.size || null;
     const toppings = opts.toppings || [];
+    const iced = Boolean(opts.iced);
+
     const toppingIds = toppings.map((t) => Number(t.id)).sort((a, b) => a - b);
-    const key = buildKey(product.id, size, toppingIds);
+    const key = buildKey(product.id, size, toppingIds, iced);
     const unitPrice = calcUnitPrice(product, size, toppings);
 
     const items = getCart();
@@ -74,9 +68,11 @@
         name: product.name,
         image_url: product.image_url,
         product_sizes: Array.isArray(product.sizes) ? product.sizes : null,
+        has_iced_option: Boolean(product.has_iced_option),
         basePrice: basePriceFromItem({ product_sizes: product.sizes, basePrice: product.price }, size),
         size,
         toppings,
+        iced,
         price: unitPrice,
         qty,
       });
@@ -101,7 +97,7 @@
     return items;
   }
 
-  function updateItem(oldKey, newSize, newToppings) {
+  function updateItem(oldKey, newSize, newToppings, newIced) {
     const items = getCart();
     const idx = items.findIndex((i) => i.key === oldKey);
     if (idx === -1) return items;
@@ -109,13 +105,14 @@
     const oldQty = item.qty;
 
     const newToppingIds = (newToppings || []).map((t) => Number(t.id)).sort((a, b) => a - b);
-    const newKey = buildKey(item.product_id, newSize, newToppingIds);
+    const newKey = buildKey(item.product_id, newSize, newToppingIds, newIced);
     const newPrice = calcPriceFromItem(item, newSize, newToppings);
     const newBase = basePriceFromItem(item, newSize);
 
     if (newKey === oldKey) {
       item.size = newSize;
       item.toppings = newToppings;
+      item.iced = newIced;
       item.price = newPrice;
       item.basePrice = newBase;
     } else {
@@ -129,6 +126,7 @@
           key: newKey,
           size: newSize,
           toppings: newToppings,
+          iced: newIced,
           price: newPrice,
           basePrice: newBase,
           qty: oldQty,
@@ -162,6 +160,7 @@
 
   function renderItem(item) {
     const variant = [];
+    if (item.iced) variant.push('🧊 Холодный');
     if (item.size) variant.push(`Размер ${item.size}`);
     if (Array.isArray(item.toppings) && item.toppings.length) {
       variant.push(item.toppings.map((t) => t.name).join(', '));
@@ -211,7 +210,6 @@
     document.querySelectorAll('[data-cart-total-price]').forEach((el) => el.textContent = formatPrice(totals.sum));
   }
 
-  /* ---------- События ---------- */
   function bindCartEvents() {
     const container = document.querySelector('[data-cart-items]');
     if (!container) return;
@@ -252,7 +250,6 @@
       }
     });
 
-    /* Ручной ввод qty — мгновенный пересчёт без полной перерисовки */
     container.addEventListener('input', (e) => {
       const input = e.target.closest('[data-cart-qty]');
       if (!input) return;
@@ -300,7 +297,6 @@
     });
   }
 
-  /* ---------- Переход на оформление ---------- */
   function goToCheckout() {
     if (!getCart().length) {
       window.showToast?.('Корзина пуста');
@@ -309,7 +305,6 @@
     location.href = '/checkout.html';
   }
 
-  /* ---------- Редактор позиции ---------- */
   async function loadToppings() {
     if (cachedToppings) return cachedToppings;
     try {
@@ -331,6 +326,7 @@
 
     const form = modal.querySelector('[data-edit-form]');
     const sizesField = modal.querySelector('[data-edit-sizes-field]');
+    const icedField = modal.querySelector('[data-edit-iced-field]');
     const toppingsField = modal.querySelector('[data-edit-toppings-field]');
     const priceEl = modal.querySelector('[data-edit-price]');
     const titleEl = modal.querySelector('[data-edit-modal-title]');
@@ -339,6 +335,7 @@
 
     let currentSize = item.size;
     let currentToppings = Array.isArray(item.toppings) ? [...item.toppings] : [];
+    let currentIced = Boolean(item.iced);
 
     /* Размеры */
     if (Array.isArray(item.product_sizes) && item.product_sizes.length) {
@@ -359,7 +356,33 @@
       sizesField.innerHTML = '';
     }
 
-    /* Топпинги — только для напитков */
+    /* Температура */
+    if (icedField) {
+      if (item.has_iced_option) {
+        icedField.hidden = false;
+        icedField.innerHTML = `
+          <span class="field__label" style="display:block; margin-top: var(--sp-3);">Температура</span>
+          <div class="size-picker">
+            <button type="button" class="size-chip ${!currentIced ? 'size-chip--active' : ''}"
+                    data-edit-iced="false">☕ Горячий</button>
+            <button type="button" class="size-chip ${currentIced ? 'size-chip--active' : ''}"
+                    data-edit-iced="true">🧊 Холодный</button>
+          </div>
+        `;
+        icedField.onclick = (e) => {
+          const btn = e.target.closest('[data-edit-iced]');
+          if (!btn) return;
+          currentIced = btn.getAttribute('data-edit-iced') === 'true';
+          icedField.querySelectorAll('[data-edit-iced]').forEach((b) =>
+            b.classList.toggle('size-chip--active', b === btn));
+        };
+      } else {
+        icedField.hidden = true;
+        icedField.innerHTML = '';
+      }
+    }
+
+    /* Топпинги */
     const isDrinkItem = Array.isArray(item.product_sizes) && item.product_sizes.length > 0;
     if (isDrinkItem && toppings.length) {
       toppingsField.hidden = false;
@@ -395,7 +418,6 @@
     }
     recalcPrice();
 
-    /* Обработчики размеров */
     sizesField.onclick = (e) => {
       const chip = e.target.closest('[data-edit-size]');
       if (!chip) return;
@@ -405,7 +427,6 @@
       recalcPrice();
     };
 
-    /* Обработчики топпингов */
     toppingsField.querySelectorAll('[data-edit-topping]').forEach((chk) => {
       chk.addEventListener('change', () => {
         const id = Number(chk.getAttribute('data-edit-topping'));
@@ -417,10 +438,9 @@
       });
     });
 
-    /* Сохранение */
     form.onsubmit = (e) => {
       e.preventDefault();
-      updateItem(key, currentSize, currentToppings);
+      updateItem(key, currentSize, currentToppings, currentIced);
       closeEditor();
       renderCart();
       window.showToast?.('Позиция обновлена');
@@ -447,7 +467,6 @@
     });
   }
 
-  /* ---------- Старт ---------- */
   function init() {
     if (document.querySelector('[data-cart-items]')) {
       renderCart();

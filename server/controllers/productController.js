@@ -46,6 +46,7 @@ function sanitize(body) {
     description: body.description !== undefined ? String(body.description).trim() : undefined,
     image_url: body.image_url !== undefined ? String(body.image_url).trim() : undefined,
     is_seasonal: body.is_seasonal !== undefined ? Boolean(body.is_seasonal) : undefined,
+    has_iced_option: body.has_iced_option !== undefined ? Boolean(body.has_iced_option) : undefined,
   };
 
   if (body.price !== undefined) out.price = Number(body.price);
@@ -53,15 +54,17 @@ function sanitize(body) {
   if (body.sizes === null) {
     out.sizes = null;
   } else if (Array.isArray(body.sizes)) {
-    out.sizes = body.sizes.map((s) => ({
-      code: s.code,
-      price: Number(s.price),
-    }));
-    // Если sizes переданы, базовый price = минимальная цена размера
+    out.sizes = body.sizes.map((s) => ({ code: s.code, price: Number(s.price) }));
     if (out.sizes.length && out.price === undefined) {
       out.price = Math.min(...out.sizes.map((s) => s.price));
     }
   }
+
+  // Для десертов флаг игнорируется — только напитки могут быть холодными
+  if (out.category === 'dessert') {
+    out.has_iced_option = false;
+  }
+
   return out;
 }
 

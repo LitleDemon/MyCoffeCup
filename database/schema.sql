@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS products (
   image_url   VARCHAR(500),
   sizes       JSON NULL,                       -- [{"code":"S","price":250},{"code":"M","price":280}] — null для десертов
   is_seasonal BOOLEAN NOT NULL DEFAULT FALSE,  -- сезонный напиток
+  has_iced_option BOOLEAN NOT NULL DEFAULT FALSE,
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_products_category (category),

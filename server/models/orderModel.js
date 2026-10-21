@@ -3,10 +3,6 @@ const pool = require('../config/db');
 const ALLOWED_STATUSES = ['new', 'paid', 'done', 'cancelled'];
 const ALLOWED_PAYMENTS = ['online', 'onsite'];
 
-/**
- * Создаёт заказ с позициями и топпингами в одной транзакции.
- * items = [{ product_id, qty, size_code?, topping_ids?: [] }]
- */
 async function create({ userId, customerName, customerEmail, items, stickers, paymentMethod }) {
   if (!items || !items.length) {
     const err = new Error('Пустой заказ');
@@ -23,10 +19,9 @@ async function create({ userId, customerName, customerEmail, items, stickers, pa
   try {
     await conn.beginTransaction();
 
-    // Загружаем товары
     const ids = [...new Set(items.map((i) => Number(i.product_id)))];
     const [products] = await conn.query(
-      `SELECT id, name, price, sizes FROM products WHERE id IN (?)`,
+      `SELECT id, name, price, sizes, has_iced_option FROM products WHERE id IN (?)`,
       [ids]
     );
     const productById = new Map(products.map((p) => {
@@ -36,7 +31,6 @@ async function create({ userId, customerName, customerEmail, items, stickers, pa
       return [p.id, p];
     }));
 
-    // Загружаем топпинги (один раз)
     const allToppingIds = [...new Set(
       items.flatMap((i) => (Array.isArray(i.topping_ids) ? i.topping_ids : []).map(Number))
     )];
@@ -77,6 +71,14 @@ async function create({ userId, customerName, customerEmail, items, stickers, pa
         sizeCode = found.code;
       }
 
+      /* Проверка "iced" */
+      const isIced = Boolean(i.iced);
+      if (isIced && !product.has_iced_option) {
+        const err = new Error(`«${product.name}» нельзя сделать холодным`);
+        err.status = 400;
+        throw err;
+      }
+
       /* Топпинги */
       const selectedToppings = [];
       if (Array.isArray(i.topping_ids)) {
@@ -103,6 +105,7 @@ async function create({ userId, customerName, customerEmail, items, stickers, pa
           size: sizeCode,
           base: basePrice,
           toppings: selectedToppings,
+          iced: isIced,
         },
       };
     });

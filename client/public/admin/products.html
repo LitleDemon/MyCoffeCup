@@ -40,7 +40,7 @@
               <th>Категория</th>
               <th>Цена</th>
               <th>Размеры</th>
-              <th>Сезон</th>
+              <th>Флаги</th>
               <th>Действия</th>
             </tr>
           </thead>
@@ -52,7 +52,6 @@
     </section>
   </main>
 
-  <!-- Модалка товара -->
   <div class="modal" data-product-modal hidden>
     <div class="modal__overlay" data-close-modal></div>
     <div class="modal__content" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
@@ -79,15 +78,22 @@
               <option value="dessert">Десерт</option>
             </select>
           </div>
-          <div class="field" style="flex: 1; display: flex; align-items: flex-end;">
+        </div>
+
+        <div class="field">
+          <span class="field__label">Флаги</span>
+          <div class="row" style="gap: var(--sp-4); flex-wrap: wrap;">
             <label class="checkbox">
               <input type="checkbox" name="is_seasonal">
               <span>Сезонный</span>
             </label>
+            <label class="checkbox" data-iced-option-field>
+              <input type="checkbox" name="has_iced_option">
+              <span>Можно охлаждённым</span>
+            </label>
           </div>
         </div>
 
-        <!-- Изображение drag&drop -->
         <div class="field">
           <label class="field__label">Изображение</label>
           <div class="dropzone" data-dropzone>
@@ -101,13 +107,11 @@
           </div>
         </div>
 
-        <!-- Цена (только для десертов) -->
         <div class="field" data-price-field hidden>
           <label class="field__label" for="p-price">Цена, ₽</label>
           <input class="input" type="number" id="p-price" name="price" min="0" step="0.01">
         </div>
 
-        <!-- Размеры (только для напитков) -->
         <div class="field" data-sizes-field hidden>
           <label class="field__label">Размеры и цены</label>
           <div class="sizes-editor">

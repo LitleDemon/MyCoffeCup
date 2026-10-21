@@ -1,8 +1,12 @@
 /**
  * stickers.js — drag-and-drop стикеры + текстовые элементы на открытке.
- * Стикеры и текст можно двигать, масштабировать (0.5–3×) и поворачивать (0–360°).
+ *
+ * Управление динамическое: маркеры прямо на стикере.
+ * - Справа по центру — ресайз (тянем от центра)
+ * - Правый верхний угол — поворот
+ * - Левый верхний угол — удалить
+ *
  * Данные хранятся в localStorage.stickers.
- * window.getOrderStickers / window.clearOrderStickers — API для cart.js.
  */
 
 (function () {
@@ -20,6 +24,7 @@
   }
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
   function genId() { return 'st_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); }
+  function normalizeRotation(r) { return ((r % 360) + 360) % 360; }
 
   function init() {
     const canvas = document.querySelector('[data-stickers-canvas]');
@@ -28,21 +33,15 @@
 
     const textInput = document.querySelector('[data-stickers-text]');
     const addTextBtn = document.querySelector('[data-stickers-add-text]');
-    const controls = document.querySelector('[data-stickers-controls]');
-    const scaleRange = controls?.querySelector('[data-control-scale]');
-    const rotateRange = controls?.querySelector('[data-control-rotate]');
-    const scaleValue = controls?.querySelector('[data-control-scale-value]');
-    const rotateValue = controls?.querySelector('[data-control-rotate-value]');
-    const deleteBtn = controls?.querySelector('[data-control-delete]');
+
+    let placed = loadStickers();
+    let activeId = null;
+    let dragState = null;
 
     /* ---------- Палитра ---------- */
     palette.innerHTML = STICKERS.map((s) =>
       `<span class="sticker-chip" draggable="true" data-sticker="${s}">${s}</span>`
     ).join('');
-
-    /* ---------- Состояние ---------- */
-    let placed = loadStickers();
-    let activeId = null;
 
     /* ---------- Рендер ---------- */
     function renderAll() {
@@ -58,35 +57,55 @@
         el.dataset.id = item.id;
         el.style.left = item.x + '%';
         el.style.top = item.y + '%';
-        el.style.transform =
-          `translate(-50%, -50%) rotate(${item.rotation || 0}deg) scale(${item.scale || 1})`;
-        el.textContent = item.content;
+        el.style.setProperty('--s', item.scale || 1);
+        el.style.setProperty('--r', (item.rotation || 0) + 'deg');
 
-        el.addEventListener('pointerdown', (e) => onPointerDown(e, item, el));
+        el.innerHTML = `
+          <div class="sticker-content">${item.content}</div>
+          <button type="button" class="sticker-handle sticker-handle--resize"
+                  data-handle="resize" aria-label="Изменить размер">
+            <span class="sticker-handle__icon">↔</span>
+          </button>
+          <button type="button" class="sticker-handle sticker-handle--rotate"
+                  data-handle="rotate" aria-label="Повернуть">
+            <span class="sticker-handle__icon">↻</span>
+          </button>
+          <button type="button" class="sticker-handle sticker-handle--delete"
+                  data-handle="delete" aria-label="Удалить">✕</button>
+        `;
+
+        el.addEventListener('pointerdown', (e) => onStickerPointerDown(e, item, el));
+
+        el.querySelector('[data-handle="resize"]').addEventListener('pointerdown',
+          (e) => startResize(e, item, el));
+        el.querySelector('[data-handle="rotate"]').addEventListener('pointerdown',
+          (e) => startRotate(e, item, el));
+        el.querySelector('[data-handle="delete"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          placed = placed.filter((i) => i.id !== item.id);
+          activeId = null;
+          saveStickers(placed);
+          renderAll();
+        });
+
         canvas.appendChild(el);
       });
-
-      updateControls();
     }
 
-    function updateControls() {
-      if (!controls) return;
-      if (!activeId) { controls.hidden = true; return; }
-      const item = placed.find((i) => i.id === activeId);
-      if (!item) { controls.hidden = true; return; }
-      controls.hidden = false;
-      if (scaleRange) scaleRange.value = item.scale || 1;
-      if (rotateRange) rotateRange.value = item.rotation || 0;
-      if (scaleValue) scaleValue.textContent = (item.scale || 1).toFixed(1);
-      if (rotateValue) rotateValue.textContent = Math.round(item.rotation || 0) + '°';
-    }
-
-    /* ---------- Перетаскивание внутри открытки ---------- */
-    let dragState = null;
-
-    function onPointerDown(e, item, el) {
-      // не начинаем drag по элементам управления
+    /* ---------- Перетаскивание и активация ---------- */
+    function onStickerPointerDown(e, item, el) {
+      if (e.target.closest('.sticker-handle')) return;
       e.preventDefault();
+      e.stopPropagation();
+
+      // Активируем без пересоздания DOM
+      if (activeId !== item.id) {
+        activeId = item.id;
+        canvas.querySelectorAll('.sticker-item').forEach((x) => {
+          x.classList.toggle('sticker-item--active', x.dataset.id === item.id);
+        });
+      }
+
       const rect = canvas.getBoundingClientRect();
       dragState = {
         item, el,
@@ -97,7 +116,7 @@
         rect,
         moved: false,
       };
-      try { el.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      try { el.setPointerCapture(e.pointerId); } catch {}
       el.classList.add('sticker-item--dragging');
     }
 
@@ -114,17 +133,66 @@
 
     function onPointerUp(e) {
       if (!dragState) return;
-      try { dragState.el.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+      try { dragState.el.releasePointerCapture(e.pointerId); } catch {}
       dragState.el.classList.remove('sticker-item--dragging');
       if (dragState.moved) saveStickers(placed);
-      activeId = dragState.item.id;
-      renderAll();
       dragState = null;
     }
 
     document.addEventListener('pointermove', onPointerMove);
     document.addEventListener('pointerup', onPointerUp);
     document.addEventListener('pointercancel', onPointerUp);
+
+    /* ---------- Ресайз ---------- */
+    function startResize(e, item, el) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + (item.x / 100) * rect.width;
+      const cy = rect.top + (item.y / 100) * rect.height;
+      const startDist = Math.hypot(e.clientX - cx, e.clientY - cy) || 1;
+      const startScale = item.scale || 1;
+
+      function onMove(ev) {
+        const dist = Math.hypot(ev.clientX - cx, ev.clientY - cy);
+        item.scale = clamp(startScale * (dist / startDist), 0.3, 4);
+        el.style.setProperty('--s', item.scale);
+      }
+      function onUp() {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        saveStickers(placed);
+      }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    }
+
+    /* ---------- Поворот ---------- */
+    function startRotate(e, item, el) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + (item.x / 100) * rect.width;
+      const cy = rect.top + (item.y / 100) * rect.height;
+      const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
+      const startRotation = item.rotation || 0;
+
+      function onMove(ev) {
+        const angle = Math.atan2(ev.clientY - cy, ev.clientX - cx);
+        const deltaDeg = (angle - startAngle) * 180 / Math.PI;
+        item.rotation = normalizeRotation(startRotation + deltaDeg);
+        el.style.setProperty('--r', item.rotation + 'deg');
+      }
+      function onUp() {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        saveStickers(placed);
+      }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    }
 
     /* ---------- Drag из палитры ---------- */
     palette.querySelectorAll('[data-sticker]').forEach((el) => {
@@ -164,7 +232,7 @@
       }
     });
 
-    /* ---------- Текст: превью-перетаскивание ---------- */
+    /* ---------- Текст ---------- */
     if (textInput && addTextBtn) {
       const preview = document.createElement('div');
       preview.className = 'text-drag-preview';
@@ -197,43 +265,6 @@
       });
     }
 
-    /* ---------- Панель управления активным элементом ---------- */
-    if (scaleRange) {
-      scaleRange.addEventListener('input', () => {
-        const item = placed.find((i) => i.id === activeId);
-        if (!item) return;
-        item.scale = parseFloat(scaleRange.value) || 1;
-        saveStickers(placed);
-        const el = canvas.querySelector(`[data-id="${activeId}"]`);
-        if (el) el.style.transform =
-          `translate(-50%, -50%) rotate(${item.rotation || 0}deg) scale(${item.scale})`;
-        if (scaleValue) scaleValue.textContent = item.scale.toFixed(1);
-      });
-    }
-
-    if (rotateRange) {
-      rotateRange.addEventListener('input', () => {
-        const item = placed.find((i) => i.id === activeId);
-        if (!item) return;
-        item.rotation = parseFloat(rotateRange.value) || 0;
-        saveStickers(placed);
-        const el = canvas.querySelector(`[data-id="${activeId}"]`);
-        if (el) el.style.transform =
-          `translate(-50%, -50%) rotate(${item.rotation}deg) scale(${item.scale || 1})`;
-        if (rotateValue) rotateValue.textContent = Math.round(item.rotation) + '°';
-      });
-    }
-
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', () => {
-        if (!activeId) return;
-        placed = placed.filter((i) => i.id !== activeId);
-        activeId = null;
-        saveStickers(placed);
-        renderAll();
-      });
-    }
-
     /* ---------- Очистка ---------- */
     document.querySelector('[data-stickers-clear]')?.addEventListener('click', () => {
       placed = [];
@@ -251,7 +282,7 @@
 
     renderAll();
 
-    /* ---------- API для cart.js ---------- */
+    /* ---------- API для checkout ---------- */
     window.getOrderStickers = () => loadStickers();
     window.clearOrderStickers = () => {
       placed = [];

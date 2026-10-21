@@ -2,7 +2,6 @@ const pool = require('../config/db');
 
 const ALLOWED_CATEGORIES = ['coffee', 'tea', 'dessert'];
 
-/* Публичный SELECT с сортировкой: сезонные сверху */
 async function getAll({ category, search, seasonalOnly } = {}) {
   const conditions = [];
   const params = [];
@@ -15,13 +14,12 @@ async function getAll({ category, search, seasonalOnly } = {}) {
     conditions.push('name LIKE ?');
     params.push(`%${search}%`);
   }
-  if (seasonalOnly) {
-    conditions.push('is_seasonal = TRUE');
-  }
+  if (seasonalOnly) conditions.push('is_seasonal = TRUE');
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const [rows] = await pool.query(
-    `SELECT id, name, category, price, description, image_url, sizes, is_seasonal, created_at
+    `SELECT id, name, category, price, description, image_url, sizes,
+            is_seasonal, has_iced_option, created_at
        FROM products
        ${where}
        ORDER BY is_seasonal DESC, id ASC`,
@@ -32,7 +30,8 @@ async function getAll({ category, search, seasonalOnly } = {}) {
 
 async function getById(id) {
   const [rows] = await pool.query(
-    `SELECT id, name, category, price, description, image_url, sizes, is_seasonal, created_at
+    `SELECT id, name, category, price, description, image_url, sizes,
+            is_seasonal, has_iced_option, created_at
        FROM products WHERE id = ?`,
     [id]
   );
@@ -41,8 +40,9 @@ async function getById(id) {
 
 async function create(data) {
   const [result] = await pool.query(
-    `INSERT INTO products (name, category, price, description, image_url, sizes, is_seasonal)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products
+       (name, category, price, description, image_url, sizes, is_seasonal, has_iced_option)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.name,
       data.category,
@@ -51,6 +51,7 @@ async function create(data) {
       data.image_url ?? null,
       data.sizes ? JSON.stringify(data.sizes) : null,
       data.is_seasonal ? 1 : 0,
+      data.has_iced_option ? 1 : 0,
     ]
   );
   return getById(result.insertId);
@@ -75,6 +76,10 @@ async function update(id, data) {
     fields.push('is_seasonal = ?');
     params.push(data.is_seasonal ? 1 : 0);
   }
+  if (data.has_iced_option !== undefined) {
+    fields.push('has_iced_option = ?');
+    params.push(data.has_iced_option ? 1 : 0);
+  }
 
   if (!fields.length) return getById(id);
 
@@ -88,13 +93,13 @@ async function remove(id) {
   return result.affectedRows > 0;
 }
 
-/* JSON из mysql2 иногда приходит строкой, иногда объектом */
 function normalize(p) {
   if (!p) return null;
   if (typeof p.sizes === 'string') {
     try { p.sizes = JSON.parse(p.sizes); } catch { p.sizes = null; }
   }
   p.is_seasonal = Boolean(p.is_seasonal);
+  p.has_iced_option = Boolean(p.has_iced_option);
   return p;
 }
 

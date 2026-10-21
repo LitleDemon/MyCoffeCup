@@ -1,6 +1,5 @@
 /**
  * receipt.js — красивый чек по order_id из URL.
- * Работает и для своих заказов, и для админских (по токену).
  */
 
 (function () {
@@ -36,6 +35,7 @@
     const itemsHtml = (order.items || []).map((it) => {
       const opts = it.options || {};
       const variant = [];
+      if (opts.iced) variant.push('🧊 Холодный');
       if (opts.size) variant.push(`Размер ${opts.size}`);
       if (Array.isArray(opts.toppings) && opts.toppings.length) {
         variant.push(opts.toppings.map((t) => t.name).join(', '));
@@ -110,7 +110,6 @@
       return;
     }
 
-    // Локальный заказ (fallback без сервера)
     if (String(id).startsWith('local-')) {
       const local = localStorage.getItem('last_order');
       if (!local) {

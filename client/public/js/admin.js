@@ -248,7 +248,7 @@
     });
   }
 
-  /* ============================================================
+    /* ============================================================
      PRODUCTS
      ============================================================ */
 
@@ -262,11 +262,11 @@
 
     let products = await loadProductsAdmin();
 
-    /* Переключение полей по категории */
     const categorySelect = form.querySelector('[name="category"]');
     const priceField = form.querySelector('[data-price-field]');
     const sizesField = form.querySelector('[data-sizes-field]');
     const priceInput = form.querySelector('[name="price"]');
+    const icedField = form.querySelector('[data-iced-option-field]');
 
     function toggleFieldsByCategory() {
       if (!categorySelect) return;
@@ -274,10 +274,10 @@
       if (priceField) priceField.hidden = isDrink;
       if (sizesField) sizesField.hidden = !isDrink;
       if (priceInput) priceInput.required = !isDrink;
+      if (icedField) icedField.hidden = !isDrink;
     }
     categorySelect?.addEventListener('change', toggleFieldsByCategory);
 
-    /* Размеры: чекбокс включает/выключает цену */
     SIZE_CODES.forEach((code) => {
       const check = form.querySelector(`[data-size-check="${code}"]`);
       const input = form.querySelector(`[data-size-price="${code}"]`);
@@ -288,10 +288,8 @@
       });
     });
 
-    /* Drag&drop изображения */
     setupImageDropzone(form);
 
-    /* Рендер таблицы */
     function render() {
       if (!products.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Товаров пока нет</td></tr>';
@@ -301,6 +299,9 @@
         const sizes = Array.isArray(p.sizes) && p.sizes.length
           ? p.sizes.map((s) => `${s.code} ${fmtPrice(s.price)}`).join(' · ')
           : '—';
+        const flags = [];
+        if (p.is_seasonal) flags.push('<span class="badge badge--accent">сезон</span>');
+        if (p.has_iced_option) flags.push('<span class="badge badge--new">🧊</span>');
         return `
           <tr>
             <td>${p.id}</td>
@@ -309,7 +310,7 @@
             <td>${escapeHtml(p.category)}</td>
             <td>${fmtPrice(p.price)}</td>
             <td style="font-size: var(--fs-xs);">${sizes}</td>
-            <td>${p.is_seasonal ? '<span class="badge badge--accent">сезон</span>' : '—'}</td>
+            <td>${flags.length ? flags.join(' ') : '—'}</td>
             <td class="table-actions">
               <button class="btn" data-edit="${p.id}" title="Редактировать">✎</button>
               <button class="btn" data-delete="${p.id}" title="Удалить">🗑</button>
@@ -344,6 +345,7 @@
       form.querySelector('[name="price"]').value = p.price || '';
       form.querySelector('[name="image_url"]').value = p.image_url || '';
       form.querySelector('[name="is_seasonal"]').checked = Boolean(p.is_seasonal);
+      form.querySelector('[name="has_iced_option"]').checked = Boolean(p.has_iced_option);
 
       SIZE_CODES.forEach((code) => {
         const check = form.querySelector(`[data-size-check="${code}"]`);
@@ -372,6 +374,7 @@
         description: fd.get('description').trim(),
         image_url: fd.get('image_url') || null,
         is_seasonal: fd.get('is_seasonal') === 'on',
+        has_iced_option: isDrink && fd.get('has_iced_option') === 'on',
       };
 
       if (isDrink) {
@@ -463,6 +466,16 @@
 
     document.querySelector('[data-open-product-modal]')?.addEventListener('click', openForCreate);
     render();
+  }
+
+  async function loadProductsAdmin() {
+    try {
+      const data = await window.api.get('/products');
+      return Array.isArray(data) ? data : (data.products || []);
+    } catch (err) {
+      console.warn('Не удалось загрузить товары:', err.message);
+      return [];
+    }
   }
 
   async function loadProductsAdmin() {

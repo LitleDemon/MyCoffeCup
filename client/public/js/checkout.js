@@ -73,6 +73,7 @@
         qty: i.qty,
         size_code: i.size || null,
         topping_ids: (i.toppings || []).map((t) => t.id),
+        iced: Boolean(i.iced),   
       })),
       stickers,
       payment_method: paymentMethod,

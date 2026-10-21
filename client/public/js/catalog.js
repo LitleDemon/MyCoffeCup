@@ -2,16 +2,14 @@
  * catalog.js — каталог и страница товара.
  * Источник данных — только API (/api/products и /api/toppings).
  *
- * На карточках напитков — выбор размера S/M/L.
- * На странице товара — размер + топпинги с пересчётом цены.
- * Сезонные товары и топпинги помечаются бейджем.
+ * На карточках — выбор размера. На странице товара — размер, температура
+ * (если доступна) и топпинги.
  */
 
 (function () {
   let allProducts = [];
   let allToppings = [];
 
-  /* ---------- Загрузка ---------- */
   async function loadData() {
     try {
       const [p, t] = await Promise.all([
@@ -37,7 +35,6 @@
     }
   }
 
-  /* ---------- Утилиты ---------- */
   function formatPrice(n) { return Number(n).toLocaleString('ru-RU') + ' ₽'; }
   const CATEGORY_LABELS = { coffee: 'Кофе', tea: 'Чай', dessert: 'Десерт' };
 
@@ -56,10 +53,9 @@
     return null;
   }
 
-  /* Ключ позиции в корзине: product_id + size + toppings */
-  function buildKey(productId, sizeCode, toppingIds = []) {
+  function buildKey(productId, sizeCode, toppingIds = [], iced = false) {
     const t = [...toppingIds].sort((a, b) => a - b).join('-');
-    return `${productId}_${sizeCode || ''}_${t}`;
+    return `${productId}_${sizeCode || ''}_${t}_${iced ? 'i' : 'h'}`;
   }
 
   function getCartQty(key) {
@@ -68,7 +64,20 @@
     return found ? found.qty : 0;
   }
 
-  /* ---------- Карточка: размеры и действия ---------- */
+  /* ---------- Карточка в каталоге ---------- */
+
+  function activeSizeOf(product) {
+    const sizes = getSizes(product);
+    if (!sizes) return null;
+    return sizes[0].code;
+  }
+
+  function sizePrice(product, sizeCode) {
+    const sizes = getSizes(product);
+    if (!sizes) return Number(product.price);
+    const found = sizes.find((s) => s.code === sizeCode);
+    return found ? Number(found.price) : Number(product.price);
+  }
 
   function renderSizes(product, activeSize) {
     const sizes = getSizes(product);
@@ -85,21 +94,8 @@
     `;
   }
 
-  function activeSizeOf(product) {
-    const sizes = getSizes(product);
-    if (!sizes) return null;
-    return sizes[0].code;
-  }
-
-  function sizePrice(product, sizeCode) {
-    const sizes = getSizes(product);
-    if (!sizes) return Number(product.price);
-    const found = sizes.find((s) => s.code === sizeCode);
-    return found ? Number(found.price) : Number(product.price);
-  }
-
   function renderActionsFor(product, sizeCode) {
-    const key = buildKey(product.id, sizeCode, []);
+    const key = buildKey(product.id, sizeCode, [], false);
     const qty = getCartQty(key);
     if (qty <= 0) {
       return `<button class="btn btn--primary" data-add-to-cart="${product.id}" data-add-size="${sizeCode || ''}">В корзину</button>`;
@@ -122,6 +118,7 @@
         <a class="product-card__media" href="/product.html?id=${p.id}">
           <img src="${p.image_url || ''}" alt="${escapeHtml(p.name)}" loading="lazy">
           ${p.is_seasonal ? '<span class="badge badge--accent product-card__season">Сезон</span>' : ''}
+          ${p.has_iced_option ? '<span class="badge product-card__iced" title="Можно охлаждённым">🧊 Холодный</span>' : ''}
         </a>
         <div class="product-card__body">
           <h3 class="product-card__title">
@@ -140,10 +137,7 @@
     `;
   }
 
-  /* ---------- Действия на карточках ---------- */
-
   function bindCardActions(grid) {
-    /* Выбор размера */
     grid.addEventListener('click', (e) => {
       const chip = e.target.closest('[data-size-chip]');
       if (chip) {
@@ -154,7 +148,6 @@
         const sizeCode = chip.getAttribute('data-size-chip');
         const price = Number(chip.getAttribute('data-size-price'));
 
-        // Обновляем активный чип
         picker.querySelectorAll('[data-size-chip]').forEach((c) => {
           c.classList.toggle('size-chip--active', c === chip);
         });
@@ -162,7 +155,6 @@
         card.setAttribute('data-active-size', sizeCode);
         card.querySelector('[data-card-price]').textContent = formatPrice(price);
 
-        // Обновляем действия под новый размер
         const product = allProducts.find((p) => String(p.id) === String(productId));
         const actionsEl = card.querySelector('[data-actions]');
         if (product && actionsEl) actionsEl.innerHTML = renderActionsFor(product, sizeCode);
@@ -175,7 +167,7 @@
         const size = addBtn.getAttribute('data-add-size') || null;
         const product = allProducts.find((p) => String(p.id) === String(id));
         if (!product) return;
-        window.Cart.add(product, { size, toppings: [] }, 1);
+        window.Cart.add(product, { size, toppings: [], iced: false }, 1);
         forceRenderActions(id, size);
         window.showToast?.(`«${product.name}» добавлен`);
         return;
@@ -185,7 +177,7 @@
       if (decBtn) {
         const id = decBtn.getAttribute('data-qty-dec');
         const size = decBtn.getAttribute('data-qty-size') || null;
-        const key = buildKey(id, size, []);
+        const key = buildKey(id, size, [], false);
         const cur = getCartQty(key);
         if (cur <= 1) window.Cart.remove(key);
         else window.Cart.updateQty(key, cur - 1);
@@ -199,22 +191,21 @@
         const size = incBtn.getAttribute('data-qty-size') || null;
         const product = allProducts.find((p) => String(p.id) === String(id));
         if (!product) return;
-        const key = buildKey(id, size, []);
+        const key = buildKey(id, size, [], false);
         const cur = getCartQty(key);
-        if (cur === 0) window.Cart.add(product, { size, toppings: [] }, 1);
+        if (cur === 0) window.Cart.add(product, { size, toppings: [], iced: false }, 1);
         else window.Cart.updateQty(key, cur + 1);
         forceRenderActions(id, size);
         return;
       }
     });
 
-    /* Ручной ввод в поле qty */
     grid.addEventListener('change', (e) => {
       const input = e.target.closest('[data-qty-input]');
       if (!input) return;
       const id = input.getAttribute('data-qty-input');
       const size = input.getAttribute('data-qty-size') || null;
-      const key = buildKey(id, size, []);
+      const key = buildKey(id, size, [], false);
       const raw = input.value.trim();
       const value = parseInt(raw, 10);
       if (isNaN(value) || value <= 0) window.Cart.remove(key);
@@ -242,7 +233,6 @@
     });
   }
 
-  /* ---------- Главная ---------- */
   async function initCatalog() {
     const grid = document.querySelector('[data-products]');
     if (!grid) return;
@@ -263,7 +253,6 @@
         return true;
       });
 
-      // Сезонные всегда первыми (даже если сервер уже отсортировал)
       filtered.sort((a, b) => {
         if (a.is_seasonal && !b.is_seasonal) return -1;
         if (!a.is_seasonal && b.is_seasonal) return 1;
@@ -291,6 +280,7 @@
   }
 
   /* ---------- Страница товара ---------- */
+
   async function initProductPage() {
     const container = document.querySelector('[data-product]');
     if (!container) return;
@@ -349,6 +339,16 @@
             </div>
           ` : ''}
 
+          ${p.has_iced_option ? `
+            <div class="field" style="margin-top: var(--sp-4);">
+              <span class="field__label">Температура</span>
+              <div class="iced-picker" data-iced-picker>
+                <button type="button" class="size-chip size-chip--active" data-iced="false">☕ Горячий</button>
+                <button type="button" class="size-chip" data-iced="true">🧊 Холодный</button>
+              </div>
+            </div>
+          ` : ''}
+
           ${isDrinkProduct && allToppings.length ? `
             <div class="field" style="margin-top: var(--sp-4);">
               <span class="field__label">Добавки</span>
@@ -386,12 +386,12 @@
       </div>
     `;
 
-    /* Состояние страницы товара */
     const state = {
       product: p,
       size: initialSize,
       sizePrice: initialPrice,
-      toppings: [],  // [{id, name, price}]
+      toppings: [],
+      iced: false,
     };
 
     function calcTotal() {
@@ -399,7 +399,7 @@
     }
 
     function currentKey() {
-      return buildKey(p.id, state.size, state.toppings.map((t) => t.id));
+      return buildKey(p.id, state.size, state.toppings.map((t) => t.id), state.iced);
     }
 
     function updateTotalAndActions() {
@@ -424,7 +424,6 @@
       }
     }
 
-    /* Обработчики */
     container.addEventListener('click', (e) => {
       const chip = e.target.closest('[data-detail-size]');
       if (chip) {
@@ -438,10 +437,20 @@
         return;
       }
 
+      const icedBtn = e.target.closest('[data-iced]');
+      if (icedBtn) {
+        state.iced = icedBtn.getAttribute('data-iced') === 'true';
+        container.querySelectorAll('[data-iced]').forEach((b) =>
+          b.classList.toggle('size-chip--active', b === icedBtn));
+        updateTotalAndActions();
+        return;
+      }
+
       if (e.target.closest('[data-detail-add]')) {
         window.Cart.add(p, {
           size: state.size,
           toppings: state.toppings,
+          iced: state.iced,
         }, 1);
         window.showToast?.(`«${p.name}» добавлен`);
         updateTotalAndActions();
@@ -462,7 +471,6 @@
       }
     });
 
-    /* Чекбоксы топпингов */
     container.querySelectorAll('[data-topping-check]').forEach((chk) => {
       chk.addEventListener('change', () => {
         const tid = Number(chk.getAttribute('data-topping-check'));
@@ -474,7 +482,6 @@
       });
     });
 
-    /* Ручной ввод qty */
     container.addEventListener('change', (e) => {
       const input = e.target.closest('[data-detail-qty]');
       if (!input) return;
